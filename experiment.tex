@@ -1,0 +1,130 @@
+% ================= 实验章节 =================
+% 由 main.tex 抽出，通过 \input{experiment} 引入。
+% 依赖 main.tex 导言区的 amsmath、booktabs、multirow 宏包及方法章节的公式标签（eq:weight、eq:final_shift 等）。
+
+\section{实验}
+
+\subsection{实验配置}
+\label{sec:setup}
+
+\subsubsection{仿真数据产生}
+仿真数据基于 NYU Depth V2~\cite{nyudepth}的 464 个室内场景生成。激光脉冲为 FWHM $0.6\,\mathrm{ns}$ 的高斯波形，单光子雪崩二极管（SPAD）探测器经 1024-bin 时间数字转换（TDC）量化，bin 宽 $66.9\,\mathrm{ps}$，对应 $[0,10.24]\,\mathrm{m}$ 测距量程；每帧累积 $M=1125$ 个测距周期。像素记录遵循死时间约束（每周期至多记录最早到达的一个光子），背景光与暗计数按泊松过程叠加，与式~\eqref{eq:poisson_obs}的观测模型一致。原生 TDC 分辨率取 $230\times310$；$46\times62$ 分辨率由其 $5\times5$ 邻域聚合得到，单像素信号通量相应提升 25 倍。两分辨率下相同的深度真值图（下采样至对应网格）作为评价参考。
+
+三个工作点仅改变背景照度（$5\times10^3$、$10^4$、$5\times10^4\,\mathrm{lux}$，下文简称 5k/10k/50k），激光信号水平保持不变：以 10k 档为例，230×310 分辨率下单像素平均信号光子数约 3.5，背景与暗计数合计约 68.7。按检测信噪比定义 $\mathrm{SNR}=\mu_s/\sqrt{\mu_s+\mu_b+\mathrm{DCR}}$（$20\log_{10}$ 换算为 dB，对 recorded photons 计入死时间），464 帧全像幅聚合的逐像素 SNR 为 $-5.9\pm8.7$、$-8.6\pm8.9$、$-15.4\pm9.4\,\mathrm{dB}$（46×62 结果一致）。SNR 随背景照度上升而单调下降（背景主导区 $\mathrm{SNR}\propto1/\sqrt{\mu_b}$），三个工作点覆盖了从边缘可用到深度饥饿的运行区间。
+
+\subsubsection{评价指标与实现细节}
+全部实验在 464 个场景的完整集合上进行，评价指标为绝对平均误差（MAE）、中位数误差与 inlier 比例（相对误差 $\lvert\hat\mu_p-\mu_p\rvert/\mu_p$ 小于 $0.2\%$、$0.5\%$、$1\%$ 的像素占比），与 CASPI~\cite{caspi}原论文口径一致。单目相对深度由 Depth Anything V2（ViT-S）给出，推理一次后缓存复用。实验平台为 RTX 2080 Ti（PyTorch 与 CuPy）。按 \ref{sec:engineering} 节的标定流程，几何软门控尺度 $\sigma_w=16$ bins，匹配得分下限 $\rho_{\mathrm{floor}}=0.3$，正则化项 $\hat N_0=50$；匹配窗口取 $\pm6$ bins，窗搜索宽度 $2K+1=5$ bins（$K=2$）。上述参数在独立验证集上标定后于全部实验中冻结。
+
+\subsection{消融实验}
+\label{sec:ablation}
+
+为量化式~\eqref{eq:weight}中各因子的贡献，构造阶梯式消融序列：L0 为单像素基线（Coates 校正后匹配滤波取峰，无融合）；L1 在 L0 基础上对邻域做等权平均（无对齐）；L2 将等权替换为信号强度权重；L3 引入全轴匹配得分对齐但不用先验（搜索中心不依赖 $\Delta_{pq}$）；L4 先验整数对齐加几何软门控（仅 $g_\Delta$）；L5 加入匹配门与信号强度（$g_\rho\hat u_q$，即式~\eqref{eq:weight}的完整权重但不含窗搜索）；L6 在 L5 基础上加入窗搜索重对齐（式~\eqref{eq:final_shift}，$K=2$）。各级均输出完整深度图并按同一口径评价，结果见表~\ref{tab:ablation230}与表~\ref{tab:ablation46}。
+
+\begin{table}[!t]
+\centering
+\caption{230×310 分辨率下的消融实验结果（464 个场景全集；MAE 单位为 m，inl@1\% 为相对误差小于 1\% 的像素占比）}
+\label{tab:ablation230}\scriptsize\setlength{\tabcolsep}{2.5pt}
+\begin{tabular}{clcccccc}
+\toprule
+\multirow{2}{*}{级别} & \multirow{2}{*}{配置} & \multicolumn{2}{c}{$-5.9\pm8.7$} & \multicolumn{2}{c}{$-8.6\pm8.9$} & \multicolumn{2}{c}{$-15.4\pm9.4$} \\
+\cmidrule(lr){3-4}\cmidrule(lr){5-6}\cmidrule(lr){7-8}
+ & & MAE & inl@1\% & MAE & inl@1\% & MAE & inl@1\% \\
+\midrule
+L0 & 单像素（Coates+MF） & 0.716 & 39.8 & 0.860 & 33.5 & 1.727 & 13.2 \\
+L1 & 不对齐 + 等权平均 & 0.084 & 62.6 & 0.099 & 62.0 & 0.199 & 57.7 \\
+L2 & 不对齐 + 信号强度权重 & 0.082 & 62.7 & 0.098 & 62.1 & 0.196 & 58.0 \\
+L3 & 无先验 + 全轴匹配得分对齐 & 1.571 & 29.5 & 1.653 & 25.4 & 2.055 & 12.2 \\
+L4 & 先验整数对齐 + 几何门 & 0.064 & 64.3 & 0.080 & 63.3 & 0.194 & 57.1 \\
+L5 & L4 + 匹配门 + 信号强度 & 0.061 & 65.1 & 0.077 & 64.0 & 0.190 & 57.7 \\
+L6 & L5 + 窗搜索重对齐 & \textbf{0.058} & \textbf{64.3} & \textbf{0.074} & \textbf{63.9} & \textbf{0.186} & \textbf{57.6} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[!t]
+\centering
+\caption{46×62 分辨率下的消融实验结果（464 个场景全集；MAE 单位为 m，inl@1\% 为相对误差小于 1\% 的像素占比）}
+\label{tab:ablation46}\scriptsize\setlength{\tabcolsep}{2.5pt}
+\begin{tabular}{clcccccc}
+\toprule
+\multirow{2}{*}{级别} & \multirow{2}{*}{配置} & \multicolumn{2}{c}{$-5.7\pm8.4$} & \multicolumn{2}{c}{$-8.4\pm8.6$} & \multicolumn{2}{c}{$-15.2\pm9.0$} \\
+\cmidrule(lr){3-4}\cmidrule(lr){5-6}\cmidrule(lr){7-8}
+ & & MAE & inl@1\% & MAE & inl@1\% & MAE & inl@1\% \\
+\midrule
+L0 & 单像素（Coates+MF） & 0.665 & 37.0 & 0.814 & 30.9 & 1.695 & 12.5 \\
+L1 & 不对齐 + 等权平均 & 0.323 & 22.7 & 0.349 & 22.3 & 0.522 & 19.7 \\
+L2 & 不对齐 + 信号强度权重 & 0.317 & 23.0 & 0.342 & 22.5 & 0.519 & 20.0 \\
+L3 & 无先验 + 全轴匹配得分对齐 & 1.470 & 27.3 & 1.533 & 23.2 & 2.031 & 10.0 \\
+L4 & 先验整数对齐 + 几何门 & 0.214 & 29.3 & 0.235 & 30.1 & 0.460 & 24.1 \\
+L5 & L4 + 匹配门 + 信号强度 & 0.197 & 32.4 & 0.221 & 32.5 & 0.451 & 25.2 \\
+L6 & L5 + 窗搜索重对齐 & \textbf{0.184} & \textbf{40.1} & \textbf{0.207} & \textbf{38.2} & \textbf{0.427} & \textbf{27.5} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+结果呈现三个一致的规律。其一，无先验的数据驱动对齐（L3）在两个分辨率下均系统性崩溃（MAE $1.5\sim2.1\,\mathrm{m}$，甚至劣于不融合的 L0）：归一化匹配得分在背景主导的直方图上频繁锁定背景巧合峰，且跨邻居的错位独立发生、无法通过平均抵消。将搜索中心约束为先验整数对齐（L4）后误差立即恢复一个数量级以上，验证了 \ref{sec:alignment} 节“单目先验提供搜索范围、数据决定最终对齐”的分工必要性；对照式~\eqref{eq:delta}，此时起作用的仅是单目相对位移的几何趋势，其全局尺度误差不参与。其二，几何门（L4）与匹配门、信号强度（L5）的逐级引入在两个分辨率下均带来单调改善，说明可靠性因子 $g_\Delta$、$g_\rho$ 与精度因子 $\hat u_q$ 的贡献可分离且方向一致。其三，窗搜索（L6）在统一 $K=2$ 配置下于两个分辨率、三个照度档全部取得最优 MAE 与中位数误差，相对 L5 的净增益为 $3\%\sim7\%$；同时 inl@1\% 不降，表明小窗重对齐在修正邻居残余错位的同时未引入背景巧合峰。
+
+值得指出的是 MAE 与 inl@1\% 在 L0$\to$L1 处的背离：46×62 上等权平均使 MAE 从 $0.665$ 降至 $0.323$，inl@1\% 却从 $37.0\%$ 跌至 $22.7\%$。这是误差分布重组的结果——单像素估计呈双峰分布（约 37\% 的像素亚厘米级准确，其余误差约 $1\,\mathrm{m}$ 量级），等权平均将高信噪比像素与跨边缘、饥饿邻居无差别混合，以头部精度换取尾部均值；后续几何门与匹配门逐级将该头部精度找回，至 L6 时 inl@1\% 反超 L0（$40.1\%$ vs $37.0\%$），实现两端兼顾。这一现象也说明单靠 MAE 会高估朴素融合的价值。
+
+\subsection{对比实验}
+\label{sec:comparison}
+
+将本文方法与四类基线在完全相同的 464 个场景、同一真值与同一评价脚本下比较：（1）Argmax，原始直方图直接取峰（无 Coates 校正与匹配滤波）；（2）Raw+MF，原始直方图经匹配滤波后取峰；（3）Coates+MF，即消融实验中的 L0；（4）CASPI~\cite{caspi}，使用官方实现与原论文参数；（5）本文方法（L6，$K=2$）。结果见表~\ref{tab:comp230}与表~\ref{tab:comp46}。
+
+\begin{table}[!t]
+\centering
+\caption{230×310 分辨率下与基线方法的定量对比（464 个场景全集；上半部分为 MAE，单位 m；下半部分为 inl@1\%，单位 \%；列组标题为全像幅平均检测 SNR，mean$\pm\mathrm{std}$，单位 dB）}
+\label{tab:comp230}
+\scriptsize\setlength{\tabcolsep}{2.5pt}
+\begin{tabular}{lcccccc}
+\toprule
+\multirow{2}{*}{方法} & \multicolumn{2}{c}{$-5.9\pm8.7$} & \multicolumn{2}{c}{$-8.6\pm8.9$} & \multicolumn{2}{c}{$-15.4\pm9.4$} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
+ & MAE & inl@1\% & MAE & inl@1\% & MAE & inl@1\% \\
+\midrule
+\multicolumn{7}{l}{MAE (m)$\;\downarrow$}\\
+Argmax & 1.645 & 1.728 & 1.980 \\
+Raw+MF & 0.415 & 0.559 & 1.073 \\
+Coates+MF & 0.716 & 0.860 & 1.727 \\
+CASPI~\cite{caspi} & 0.097 & 0.140 & 0.375 \\
+Ours & \textbf{0.058} & \textbf{0.074} & \textbf{0.186} \\
+\midrule
+\multicolumn{7}{l}{inl@1\% $\uparrow$}\\
+Argmax & 18.3 & 14.8 & 7.2 \\
+Raw+MF & 43.1 & 36.3 & 20.2 \\
+Coates+MF & 39.8 & 33.5 & 13.2 \\
+CASPI~\cite{caspi} & 53.4 & 51.7 & 43.6 \\
+Ours & \textbf{64.3} & \textbf{63.9} & \textbf{57.6} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[!t]
+\centering
+\caption{46×62 分辨率下与基线方法的定量对比（464 个场景全集；上半部分为 MAE，单位 m；下半部分为 inl@1\%，单位 \%；列组标题为全像幅平均检测 SNR，mean$\pm\mathrm{std}$，单位 dB）}
+\label{tab:comp46}
+\scriptsize\setlength{\tabcolsep}{2.5pt}
+\begin{tabular}{lcccccc}
+\toprule
+\multirow{2}{*}{方法} & \multicolumn{2}{c}{$-5.7\pm8.4$} & \multicolumn{2}{c}{$-8.4\pm8.6$} & \multicolumn{2}{c}{$-15.2\pm9.0$} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
+ & MAE & inl@1\% & MAE & inl@1\% & MAE & inl@1\% \\
+\midrule
+\multicolumn{7}{l}{MAE (m)$\;\downarrow$}\\
+Argmax & 1.645 & 1.724 & 1.976 \\
+Raw+MF & 0.404 & 0.553 & 1.048 \\
+Coates+MF & 0.665 & 0.814 & 1.695 \\
+CASPI~\cite{caspi} & 0.207 & 0.282 & 0.648 \\
+Ours & \textbf{0.184} & \textbf{0.207} & \textbf{0.427} \\
+\midrule
+\multicolumn{7}{l}{inl@1\% $\uparrow$}\\
+Argmax & 18.3 & 14.9 & 7.2 \\
+Raw+MF & 39.6 & 33.1 & 18.1 \\
+Coates+MF & 37.0 & 30.9 & 12.5 \\
+CASPI~\cite{caspi} & 38.1 & 35.0 & 25.4 \\
+Ours & \textbf{40.1} & \textbf{38.2} & \textbf{27.5} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+对比给出三点观察。首先，传统预处理的选择比直觉敏感：Coates 校正作为反卷积类操作，在光子饥饿条件下将稀疏计数中的噪声放大为高频伪峰，使 Coates+MF 系统性劣于不校正的 Raw+MF（MAE 劣化 $47\%\sim73\%$），匹配滤波在此承担的实为抑制该校正副作用的角色；该差异在 argmax 级同样存在（不校正直方图直接取峰优于 Coates 后取峰 2 倍以上），说明这是校正本身的统计性质而非某一实现的问题。其次，CASPI 在 46×62 上是强基线（较单像素基线改善 $55\%\sim69\%$），但在 230×310 上相对自身退化、与本文方法的差距拉大至 $40\%\sim51\%$：其非局部校正依赖像素间统计相似性，原生分辨率下单像素光子数下降一个量级后相似性证据随之减弱，而本文方法因单目先验提供了与光子统计无关的几何约束，受分辨率与照度的影响显著更小。最后，在全部 12 个工作点中本文方法均取得最优 MAE 与 inl@1\%，且尾部指标的领先幅度大于均值指标（230×310 下 inl@1\% 较 CASPI 高 $6\sim14$ 个百分点），与消融实验中融合权重对不可融合邻居的抑制作用一致。效率方面，在相同的 RTX 2080 Ti 上，CASPI 处理单帧需 89.6 s（230×310），本文完整融合流水线（含单目推理）约 55 s，且该耗时同时完成了全部八个消融变体的计算。

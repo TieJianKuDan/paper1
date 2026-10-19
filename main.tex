@@ -1,0 +1,105 @@
+% !TEX program = xelatex
+% 中文双栏论文模板（模仿 IEEEtran 风格）
+% Overleaf 使用：New Project → 上传本文件，菜单中编译器选 XeLaTeX 即可
+% 字体：ctex 自动检测环境（Overleaf 用自带 Fandol 字体，无需配置）
+\documentclass[10pt,twocolumn]{ctexart}
+
+\usepackage[a4paper,top=1.9cm,bottom=2.2cm,left=1.57cm,right=1.57cm,columnsep=0.6cm]{geometry}
+\usepackage{amsmath,amsfonts,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{newtxmath}             % 数学字体用 newtx（Times 风格）
+\setmainfont{TeX Gyre Termes}      % 正文西文用 TeX Gyre Termes（Times 系）
+% 注意：不要用 newtxtext，它会重定义 \ttfamily 导致 xeCJK 中文等宽字体（仿宋）加载失败
+\usepackage{caption}
+\usepackage[colorlinks=false,pdfborder={0 0 0}]{hyperref}
+
+% ---------- 页面与版式 ----------
+\pagestyle{plain}
+\setlength{\parindent}{1.5em}
+\linespread{1.05}
+\captionsetup{font=small,labelfont=bf}
+
+% ---------- 标题样式（模仿 IEEE：大标题居中、作者小字） ----------
+\usepackage{titling}
+\pretitle{\begin{center}\LARGE\bfseries}
+\posttitle{\par\end{center}\vskip 0.6em}
+\preauthor{\begin{center}\normalsize}
+\postauthor{\par\end{center}\vskip 0.5em}
+\predate{\begin{center}\small}
+\postdate{\par\end{center}\vskip 1em}
+
+% ---------- 章节标题：模仿 IEEE 的罗马数字大写 ----------
+\ctexset{
+  section = {
+    name = {,.},           % 输出 "I." "II." 形式
+    number = \Roman{section},
+    format = \centering\scshape,   % IEEE 惯例：居中、小型大写（中文退化为宋体加间距）
+    aftername = {\ },
+    beforeskip = 1.2em plus 0.2em,
+    afterskip = 0.8em plus 0.1em,
+  },
+  subsection = {
+    name = {,.},
+    number = \Alph{subsection},   % IEEE 惯例：子节用字母编号 A. B. C.
+    format = \itshape\raggedright,
+    aftername = {\ },
+    beforeskip = 1.0em plus 0.2em,
+    afterskip = 0.5em plus 0.1em,
+  },
+}
+
+% ---------- 数学宏 ----------
+\DeclareMathOperator*{\argmax}{arg\,max}
+\DeclareMathOperator{\NMF}{NMF}
+
+% ---------- 摘要与关键词（IEEE 风格：加粗"摘要—"+斜体正文） ----------
+\newcommand{\cnabstract}[1]{%
+  \begin{center}\begin{minipage}{0.92\linewidth}
+    \small\itshape
+    \noindent\textbf{摘要——}#1
+  \end{minipage}\end{center}\vskip 0.5em}
+\newcommand{\cnkeywords}[1]{%
+  \begin{center}\begin{minipage}{0.92\linewidth}
+    \small\itshape
+    \noindent\textbf{关键词——}#1
+  \end{minipage}\end{center}\vskip 1em}
+
+\begin{document}
+
+% ================= 标题区 =================
+\twocolumn[{%
+  \centering
+  {\LARGE\bfseries 一份模仿 IEEE 风格的中文双栏论文模板\par}
+  \vskip 0.8em
+  {\normalsize 张~三$^{1}$，李~四$^{2}$\par}
+  {\small $^{1}$某某大学 电子工程学院，北京，中国\quad $^{2}$某某研究所，上海，中国\par}
+  \vskip 1.5em
+}]
+
+% ================= 摘要 =================
+\cnabstract{本模板用 \LaTeX\ 的 ctexart 文档类实现中文双栏排版，版式要素模仿 IEEE Transactions：双栏正文、罗马数字章节号、居中小型大写节标题、加粗“摘要——”引导的斜体摘要，以及 IEEE 风格的参考文献编号。本段文字用于展示摘要的排版效果，可替换为论文的真实摘要。}
+
+\cnkeywords{中文排版；双栏模板；\LaTeX；IEEEtran 风格}
+
+% ================= 正文 =================
+\section{引言}
+这里是引言部分。IEEE 论文通常以一句话背景开场，随后指出研究空白，最后给出本文贡献。中文写作时建议保持同样的叙事结构：背景——问题——贡献列表。
+
+IEEEtran 里的 \texttt{\textbackslash IEEEPARstart} 首字下沉效果是英文专属技巧，中文模板中不使用，直接正常段落起排即可。
+
+\input{method}   % 方法章节（独立文件，便于单独修改）
+
+\input{experiment}   % 实验章节（独立文件，便于单独修改）
+
+\section{结论}
+本模板覆盖了中文双栏论文最常用的排版元素，替换文字与图表即可开始写作。引用示例：单引\cite{spad2026}，多引\cite{nyudepth,lshort}。
+
+% ================= 参考文献 =================
+% 使用 BibTeX：引用处写 \cite{ref1}，条目放在 refs.bib
+% Overleaf 会自动跑 bibtex；IEEEtran.bst 为 IEEE 官方样式
+\bibliographystyle{IEEEtran}
+\bibliography{refs}
+
+\end{document}
