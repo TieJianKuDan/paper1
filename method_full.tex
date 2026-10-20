@@ -1,0 +1,1057 @@
+\documentclass[11pt,a4paper]{ctexart}
+
+\usepackage[a4paper,margin=2.4cm]{geometry}
+\usepackage{amsmath,amssymb,mathtools,bm}
+\usepackage{booktabs}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage[colorlinks=true,linkcolor=black,urlcolor=blue,citecolor=black]{hyperref}
+\usepackage{enumitem}
+
+\setlength{\parindent}{2em}
+\setlength{\parskip}{0.45em}
+\numberwithin{equation}{section}
+\setlist{nosep}
+
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Var}{\operatorname{Var}}
+\newcommand{\Cov}{\operatorname{Cov}}
+\newcommand{\Bias}{\operatorname{Bias}}
+\newcommand{\Pbb}{\mathbb{P}}
+\newcommand{\N}{\mathcal{N}}
+\newcommand{\BetaDist}{\operatorname{Beta}}
+\newcommand{\argmax}{\mathop{\mathrm{arg\,max}}}
+\newcommand{\logit}{\operatorname{logit}}
+
+\title{\textbf{单目相对深度引导下的 SPAD 直方图贝叶斯融合}\\
+含背景光观测模型、局部匹配对齐、误差传播与可标定融合权重}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+本文针对单光子雪崩二极管（SPAD）直方图深度估计中的邻域融合问题，建立一个以贝叶斯模型为骨架、以可标定参数为接口的融合框架。首先，在含背景光的泊松观测模型下，由 Fisher 信息给出回波中心估计方差的表达式，为邻居的测量精度提供依据。其次，利用单目相对深度先验确定局部匹配搜索中心，由匹配滤波峰值完成邻域直方图对齐，并将对齐误差分解为单目误差、量化残差与局部修正三个来源。再次，引入可融合性潜变量，将几何一致性与匹配一致性两类证据通过 Bayes 因子统一为后验可融合概率，进而与邻居的有效测量方差共同构成后验期望精度权重。考虑到理想模型所需的全部统计量难以在单次观测中逐像素获得，本文将融合权重显式分解为可靠性因子与精度因子：可靠性因子由几何软门控与匹配得分映射构成，精度因子由直方图峰显著度给出的信号强度代理构成；其中所有自由参数——几何门控尺度、匹配得分保底贡献、峰值窗口与背景估计方式——均由验证数据离线标定，而非依赖固定常数。整个推理流程仅使用单目先验与当前 SPAD 观测即可运行，同时保留了理想贝叶斯模型的核心结构。
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+\section{问题定义与统一符号}
+\label{sec:problem}
+
+本文处理如下问题：给定目标像素 $p$ 的 SPAD 时间直方图，如何利用其邻域 $\mathcal N_p$ 中邻居像素的直方图改进回波中心估计。直接混合邻居直方图是有风险的：邻居可能来自不同深度的表面，也可能因信号光子过少而几乎不携带信息。因此，一个可用的融合机制必须同时回答两个问题——邻居\emph{是否值得融合}（可靠性），以及\emph{值得贡献多少}（精度）。
+
+本文的思路分三步。第一步，建立含背景光的 SPAD 直方图观测模型，由 Fisher 信息刻画单个直方图回波中心估计的方差（\S\ref{sec:spad}）。第二步，利用单目相对深度先验确定局部搜索中心，通过匹配滤波完成邻居直方图对齐，并给出对齐误差的来源分解（\S\ref{sec:alignment}）。第三步，引入可融合性潜变量，将几何证据与匹配证据经 Bayes 定理合成为后验可融合概率，再与有效方差结合，得到每个邻居的后验期望精度与归一化融合权重（\S\ref{sec:fusibility}--\ref{sec:fusion_weight}）。在此基础上，\S\ref{sec:practical_approximation} 讨论理想模型中各统计量的运行时可获得性，给出所有自由参数均可标定的工程实现；\S\ref{sec:inference_pipeline} 汇总实际推理流程。
+
+\begin{table}[htbp]
+    \centering
+    \caption{主要符号及其含义}
+    \label{tab:notation}
+    \begin{tabular}{ll}
+        \toprule
+        符号 & 含义 \\
+        \midrule
+        $p,q$ & 目标像素与邻域像素 \\
+        $b$ & SPAD 直方图的离散 bin 坐标 \\
+        $\mu_p$ & 像素 $p$ 的真实回波中心坐标 \\
+        $H_p(b)$ & 像素 $p$ 在 bin $b$ 上的观测计数 \\
+        $N_p$ & 像素 $p$ 的期望信号光子数 \\
+        $h(\cdot)$ & 归一化系统脉冲响应函数（IRF） \\
+        $\beta_p$ & 像素 $p$ 每个 bin 的平均背景光与暗计数率 \\
+        $b_p^M$ & 单目模型在像素 $p$ 处的深度坐标 \\
+        $e_p$ & 单目深度坐标误差 \\
+        $\Delta_{pq}$ & 单目给出的 $p,q$ 相对深度差，用作几何软门控及局部搜索中心 \\
+        $k_{pq}^{M}$ & 由 $\Delta_{pq}$ 得到的整数粗对齐量 \\
+        $\delta$ & 相对于粗对齐量的局部搜索偏移 \\
+        $\mathcal W$ & 局部搜索窗口 \\
+        $\hat\delta_{pq}$ & 匹配滤波得到的最佳局部偏移 \\
+        $\hat k_{pq}$ & 实际用于直方图对齐的最终平移量 \\
+        $\widetilde H_{pq}(b)$ & 对齐到像素 $p$ 坐标系后的邻居直方图 \\
+        $\rho_{pq}$ & 最佳对齐位置对应的归一化匹配得分 \\
+        $\epsilon_{pq}$ & 最终直方图对齐误差 \\
+        $\sigma_{\epsilon,pq}^{2}$ & 对齐误差的条件方差 \\
+        $y_{pq}$ & 从对齐直方图得到的回波中心观测 \\
+        $v_q$ & 邻居 $q$ 在含背景光条件下的回波中心测量方差 \\
+        $v_{pq}^{\mathrm{eff}}$ & 邻居 $q$ 用于融合时的总有效方差 \\
+        $z_{pq}$ & 可融合性潜变量，$1$ 表示可融合，$0$ 表示不可融合 \\
+        $\pi_{pq}$ & 可融合性的先验概率 \\
+        $\gamma_{pq}$ & 后验可融合概率 \\
+        $c_{pq}$ & 邻居 $q$ 对目标 $p$ 的后验期望精度 \\
+        $\alpha_{pq}$ & 归一化后的最终融合系数 \\
+        \midrule
+        $\sigma_w$ & 几何软门控尺度参数（标定） \\
+        $\rho_{\mathrm{floor}}$ & 匹配得分的保底贡献参数（标定） \\
+        $\hat u_q$ & 基于峰显著度的精度因子代理（标定） \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+全文统一以 $\mu$ 表示真实深度对应的一维坐标。该坐标可以是飞行时间、距离或经标定后的深度坐标；固定的尺度变换不会改变以下推导结构。
+
+\section{含背景光的 SPAD 直方图观测模型}
+\label{sec:spad}
+
+本章建立单个像素直方图的观测模型。它承担两个任务：一是说明背景光如何进入观测量并影响估计精度，二是为后文融合权重中的精度因子 $v_q$ 提供计算依据。
+
+\subsection{目标回波与背景光的泊松模型}
+
+在光子计数系统中，目标回波光子和背景光子可以近似视为独立泊松到达过程。因此，像素 $p$ 在 bin $b$ 上的总计数满足
+\begin{equation}
+    H_p(b)
+    \sim
+    \operatorname{Poisson}\!\left(\lambda_p(b;\mu_p)\right),
+    \label{eq:poisson_obs}
+\end{equation}
+其中
+\begin{equation}
+    \boxed{
+    \lambda_p(b;\mu_p)
+    =
+    N_p h(b-\mu_p)+\beta_p
+    }.
+    \label{eq:lambda_background}
+\end{equation}
+其中 $N_p h(b-\mu_p)$ 描述目标回波的期望光子分布，$\beta_p$ 描述每个 bin 的平均背景光子与暗计数。本文假设当前观测窗口内背景近似平坦；若背景随时间变化，只需将 $\beta_p$ 替换为非负函数 $\beta_p(b)$，以下推导仍成立。
+
+若 IRF 满足
+\begin{equation}
+    \sum_b h(b-\mu_p)=1,
+    \label{eq:irf_norm}
+\end{equation}
+则
+\begin{equation}
+    \E[H_p(b)] = \lambda_p(b;\mu_p),
+    \qquad
+    \Var[H_p(b)] = \lambda_p(b;\mu_p).
+    \label{eq:poisson_moments_bg}
+\end{equation}
+因此，背景光一方面提高直方图基线，另一方面增加每个 bin 的泊松方差，从而降低回波中心估计的统计精度。这一降低的定量刻画由下面的 Fisher 信息给出。
+
+\subsection{背景条件下的回波中心方差}
+
+将回波中心 $\mu_p$ 视为待估参数，含背景泊松模型对应的 Fisher 信息为
+\begin{equation}
+    \mathcal I_p(\mu_p)
+    =
+    \sum_b
+    \frac{1}{\lambda_p(b;\mu_p)}
+    \left[
+    \frac{\partial\lambda_p(b;\mu_p)}{\partial\mu_p}
+    \right]^2.
+    \label{eq:fisher_general_bg}
+\end{equation}
+由式~\eqref{eq:lambda_background}
+\begin{equation}
+    \frac{\partial\lambda_p(b;\mu_p)}{\partial\mu_p}
+    =
+    -N_p h'(b-\mu_p),
+    \label{eq:lambda_derivative}
+\end{equation}
+故
+\begin{equation}
+    \mathcal I_p(\mu_p)
+    =
+    N_p^2
+    \sum_b
+    \frac{[h'(b-\mu_p)]^2}
+    {N_p h(b-\mu_p)+\beta_p}.
+    \label{eq:fisher_bg}
+\end{equation}
+相应的 Cram\'er--Rao 下界为
+\begin{equation}
+    \Var(\hat\mu_p)
+    \geq
+    \frac{1}{\mathcal I_p(\mu_p)}.
+    \label{eq:crlb_bg}
+\end{equation}
+在局部渐近条件下，以 Fisher 信息倒数近似回波中心估计方差，记为
+\begin{equation}
+    \boxed{
+    v_p
+    \approx
+    \mathcal I_p(\mu_p)^{-1}
+    }.
+    \label{eq:v_from_fisher}
+\end{equation}
+因此，背景光越强，Fisher 信息越低，$v_p$ 越大。特别地，当 $\beta_p\rightarrow0$ 且采用高斯 IRF（方差 $\sigma_h^2$）时，式~\eqref{eq:fisher_bg}退化为经典的无背景近似
+\begin{equation}
+    v_p\approx\frac{\sigma_h^2}{N_p},
+    \label{eq:v_classical}
+\end{equation}
+即估计方差与信号光子数成反比。这一反比关系将在 \S\ref{sec:precision_proxy} 中用于构造可在线计算的精度代理。
+
+\section{死时间畸变与 Coates 校正}
+\label{sec:coates}
+
+\S\ref{sec:spad}的泊松观测模型描述的是无死时间的理想计数过程。实际的 SPAD 探测器在每次触发后经历一段死时间：一个测距周期内至多记录一个光子，且记录的是最早到达的那个。死时间使原始直方图偏离式~\eqref{eq:poisson_obs}的独立泊松模型——到达率被非线性压缩，峰形被拉向前。本章给出该畸变的精确统计模型与其解析逆（Coates 校正），并刻画校正引入的残余误差；校正后的率域直方图即为本文后续对齐、匹配与融合各环节的实际输入。
+
+\subsection{死时间下的首事件统计}
+
+设像素 $p$ 的逐 bin 光子到达率（信号与背景之和）为 $r_p(b)$，其累积率为
+\begin{equation}
+    R_p(b) = \sum_{b'\le b} r_p(b').
+    \label{eq:cumulative_rate}
+\end{equation}
+在一个测距周期内，首事件恰好落于 bin $b$ 意味着``$b$ 之前全部空闲、$b$ 处发生触发''，其概率为
+\begin{equation}
+    \Pbb(b) = e^{-R_p(b-1)} - e^{-R_p(b)}.
+    \label{eq:first_event_prob}
+\end{equation}
+设帧内有效周期数为 $M$，则原始直方图在 $b$ 处的累积计数满足精确关系
+\begin{equation}
+    \mathrm{cum}(b)
+    \;\triangleq\;
+    \sum_{b'\le b} H_p^{\mathrm{raw}}(b')
+    =
+    M\left(1-e^{-R_p(b)}\right).
+    \label{eq:cum_relation}
+\end{equation}
+该式对任意强度成立，是到达率与可观测量之间的无损映射——畸变虽为非线性，但完全可逆。
+
+\subsection{Coates 反演及其两条性质}
+
+由式~\eqref{eq:cum_relation}反解 $e^{-R_p(b)}$ 并对相邻 bin 做差分，得到逐 bin 到达率的估计
+\begin{equation}
+    \boxed{
+    \hat r_p(b)
+    =
+    \ln\frac{M-\mathrm{cum}(b-1)}
+    {M-\mathrm{cum}(b)}
+    }.
+    \label{eq:coates_inversion}
+\end{equation}
+该式不含任何待调参数：它不是对畸变的近似补偿，而是首事件统计的解析逆。两条直接推论：
+
+\begin{enumerate}
+    \item \textbf{底座常数化}。背景光在原始直方图中呈平坦底座，经死时间压缩后发生畸变；由式~\eqref{eq:coates_inversion}反演后，其率值恢复为常数——底座信息不丢失，仅经历非线性重标；
+    \item \textbf{峰形保持}。对窄峰，$R_p(b)$ 在峰的尺度上变化平缓，反演近似保持峰的形状与中心位置，仅重标幅度。
+\end{enumerate}
+
+因此，Coates 校正将原始直方图映射为率域直方图 $F_p(b)\triangleq\hat r_p(b)$。本文后续的匹配滤波、对齐与融合均以其为输入。
+
+\subsection{频率代换的统计误差}
+
+反演式~\eqref{eq:coates_inversion}把概率写成了经验频率 $\mathrm{cum}(b)/M$——这一代换引入的统计误差可以精确刻画。由二项抽样，
+\begin{equation}
+    \mathrm{cum}(b)
+    \sim
+    \operatorname{Binomial}\!\left(M,\ p(b)\right),
+    \qquad
+    p(b) = 1-e^{-R_p(b)},
+    \label{eq:binomial_sampling}
+\end{equation}
+经验频率是无偏的，方差为 $Mp(b)(1-p(b))$。经 delta 方法传播到
+$\hat R_p(b) = -\ln\!\left(1-\mathrm{cum}(b)/M\right)$，得累积率估计的方差
+\begin{equation}
+    \boxed{
+    \Var\!\left(\hat R_p(b)\right)
+    \;\approx\;
+    \frac{e^{R_p(b)}-1}{M}
+    }.
+    \label{eq:coates_variance}
+\end{equation}
+等价的逐 bin 形式更为直观。记 $n_b = \mathrm{cum}(b)-\mathrm{cum}(b-1)$ 为 bin $b$ 的首事件计数，$m(b) = M-\mathrm{cum}(b)$ 为``到 $b$ 仍未触发''的幸存周期数，则式~\eqref{eq:coates_inversion}可写为
+\begin{equation}
+    \hat r_p(b) = \ln\!\left(1+\frac{n_b}{m(b)}\right).
+    \label{eq:per_bin_form}
+\end{equation}
+在稀疏计数区（$n_b \ll m(b)$），$\hat r_p(b)\approx n_b/m(b)$，于是
+\begin{equation}
+    \Var\!\left(\hat r_p(b)\right)
+    \approx
+    \frac{\lambda_b}{m(b)^2},
+    \qquad
+    \frac{\sqrt{\Var(\hat r_p(b))}}{\hat r_p(b)}
+    \approx
+    \frac{1}{\sqrt{\lambda_b}},
+    \label{eq:sparse_regime}
+\end{equation}
+其中 $\lambda_b = Mr_p(b)$ 为 bin $b$ 的期望首事件数。误差由本 bin 的计数与幸存周期数共同决定。由此得到三点结论：
+
+\begin{enumerate}
+    \item \textbf{无偏性保持}。频率代换本身无偏，$\ln$ 的凸性（Jensen 效应）引入的偏差为 $O(1/M)$ 的相对量级，比方差项 $O(1/\sqrt{M})$ 高出一阶小量。因此频率代换带来的是随机误差而非系统偏差——\S\ref{sec:spad}中``死时间导致的确定性偏差''经校正清零的结论在率域直方图上仍然成立，该校正误差并入散粒噪声预算；
+    \item \textbf{深部失效}。$m(b)\to 0$ 时（直方图深部、多数周期已触发），式~\eqref{eq:coates_variance}的方差指数失控——幸存周期越少，比值的微小抖动被 $\ln$ 放大越严重。实用上，反演仅在 $m(b)$ 充分大的 bin 上可信；本文的测距窗设置使峰区自然满足该条件；
+    \item \textbf{校正后噪声非严格白}。方差随 bin 位置（经 $m(b)$）变化，且相邻 bin 共享同一累积计数、存在弱相关。因此严格地说，率域直方图上的泊松似然是工作点近似：在计数充分、$m(b)$ 较大的条件下失配可忽略。\S\ref{sec:spad}的 Fisher 信息与 $v_q$ 应理解为该校正后率域直方图上的方差刻画，其中 $N_p$ 取校正后的信号光子数。
+\end{enumerate}
+
+\subsection{在推理流程中的位置}
+
+Coates 校正位于全部下游处理之前：\S\ref{sec:alignment}的对齐、\S\ref{sec:fusion_weight}的匹配滤波与融合权重，以及 \S\ref{sec:precision_proxy}中由峰显著度构造的精度因子 $\hat u_q$，其输入均为校正后的率域直方图，其中出现的信号光子数 $N_p$、$N_q$ 与计数 $H_p(b)$ 均应按率域口径理解。由于校正不改变峰中心位置（推论 ii），它不参与对齐量 $\hat k_{pq}$ 的定义，仅改变各直方图的取值标度与噪声结构。
+
+\section{单目相对深度引导的局部直方图对齐}
+\label{sec:alignment}
+
+有了单像素观测模型，下一步是对齐：只有把邻居直方图平移到目标像素的坐标系中，融合才有意义。本章说明单目先验与匹配滤波在此过程中的分工——单目先验只负责圈定搜索范围，最终对齐位置由观测数据中的匹配峰值决定。
+
+\subsection{单目相对位移与粗对齐}
+
+单目模型提供邻域内的相对深度结构。设像素 $p$ 与 $q$ 的单目深度坐标分别为 $b_p^M$ 和 $b_q^M$，定义
+\begin{equation}
+    \Delta_{pq}
+    \triangleq
+    b_p^M-b_q^M.
+    \label{eq:delta_mono}
+\end{equation}
+将单目预测写成真实坐标与预测误差之和：
+\begin{equation}
+    b_p^M=\mu_p+e_p,
+    \qquad
+    b_q^M=\mu_q+e_q.
+    \label{eq:mono_error}
+\end{equation}
+因此
+\begin{equation}
+    \Delta_{pq}
+    =
+    (\mu_p-\mu_q)+(e_p-e_q).
+    \label{eq:delta_error}
+\end{equation}
+这里的 $\Delta_{pq}$ 有两个作用：一是提供邻居直方图局部搜索的粗略中心，二是作为判断 $p$ 与 $q$ 是否可能属于同一表面的几何证据。值得注意的是，$\Delta_{pq}$ 中不包含各自独立的单目误差 $e_p,e_q$ 本身，只包含其差值 $e_p-e_q$——单目模型的全局尺度误差在对齐这一步被自然抵消，起作用的只是其局部相对精度。
+
+将单目相对位移量化为整数 bin，得到粗对齐量
+\begin{equation}
+    k_{pq}^{M}
+    =
+    \operatorname{round}(\Delta_{pq}).
+    \label{eq:coarse_shift}
+\end{equation}
+这里 $k_{pq}^{M}$ 仅决定局部搜索中心，并不作为最终对齐偏差。
+
+\subsection{局部匹配滤波搜索}
+
+以 $k_{pq}^{M}$ 为中心，在有限窗口
+\begin{equation}
+    \mathcal W=\{-K,\ldots,0,\ldots,K\}
+    \label{eq:search_window}
+\end{equation}
+内测试候选偏移 $\delta$。对应的候选对齐直方图为
+\begin{equation}
+    \widetilde H_{pq}^{(\delta)}(b)
+    =
+    H_q\!\left(b-k_{pq}^{M}-\delta\right).
+    \label{eq:candidate_alignment}
+\end{equation}
+对每个候选位置计算归一化匹配滤波得分
+\begin{equation}
+    \rho_{pq}(\delta)
+    =
+    \operatorname{NMF}\!\left(
+    H_p,
+    \widetilde H_{pq}^{(\delta)}
+    \right),
+    \qquad
+    0\leq\rho_{pq}(\delta)\leq1,
+    \label{eq:normalized_match_score}
+\end{equation}
+其中 $\operatorname{NMF}(\cdot,\cdot)$ 表示具体实现采用的归一化匹配滤波算子。若背景基线会显著影响匹配结果，可在计算匹配得分前利用背景估计进行校正或归一化。
+
+最佳局部偏移由匹配滤波峰值确定：
+\begin{equation}
+    \hat\delta_{pq}
+    =
+    \argmax_{\delta\in\mathcal W}
+    \rho_{pq}(\delta),
+    \label{eq:best_local_offset}
+\end{equation}
+将最优位置对应的归一化匹配得分定义为
+\begin{equation}
+    \rho_{pq}
+    \triangleq
+    \rho_{pq}(\hat\delta_{pq})
+    =
+    \max_{\delta\in\mathcal W}\rho_{pq}(\delta).
+    \label{eq:best_match_score}
+\end{equation}
+于是，真正参与直方图对齐的平移量为
+\begin{equation}
+    \boxed{
+    \hat k_{pq}
+    =
+    k_{pq}^{M}+\hat\delta_{pq}
+    }.
+    \label{eq:final_shift}
+\end{equation}
+相应的对齐直方图为
+\begin{equation}
+    \widetilde H_{pq}(b)
+    =
+    H_q(b-\hat k_{pq}).
+    \label{eq:final_alignment}
+\end{equation}
+因此，单目相对深度只负责将匹配搜索限制在合理的局部范围内，而最终对齐位置由实际的匹配滤波峰值决定。$\rho_{pq}$ 则记录了该峰值处的匹配质量，它将在 \S\ref{sec:fusibility} 中作为匹配证据参与可融合性判断。
+
+\section{可融合性的概率模型}
+\label{sec:fusibility}
+
+对齐解决了"怎么移"的问题，但没有解决"该不该用"的问题：一个匹配峰值可能是真实回波的重合，也可能是噪声造成的巧合。本章将"邻居是否可融合"建模为二值潜变量，并说明几何证据 $\Delta_{pq}$ 与匹配证据 $\rho_{pq}$ 如何通过 Bayes 定理共同更新其后验概率。需要说明的是，本章的概率分布假设用于刻画理想模型的结构；其在实际系统中的可获得性将在 \S\ref{sec:practical_approximation} 中专门讨论。
+
+\subsection{可融合性潜变量与证据}
+
+定义二值潜变量
+\begin{equation}
+    z_{pq}\in\{0,1\},
+    \label{eq:z_definition}
+\end{equation}
+其中 $z_{pq}=1$ 表示邻居 $q$ 与目标像素 $p$ 的观测属于可融合关系，即将其对齐到目标坐标系后，可以用于估计 $\mu_p$；$z_{pq}=0$ 表示该邻居属于不可融合关系，例如来自不同表面或形成了不可靠的匹配峰。
+
+用于判断 $z_{pq}$ 的证据为
+\begin{equation}
+    \bm x_{pq}
+    =
+    (\Delta_{pq},\rho_{pq}).
+    \label{eq:evidence_pair}
+\end{equation}
+其中 $\Delta_{pq}$ 是单目先验提供的几何差异，用于形成连续软门控；$\rho_{pq}$ 是局部匹配滤波在最佳对齐位置取得的归一化匹配得分，用于验证该局部对齐是否具有充分的观测支持。
+
+\subsection{几何软门控模型}
+
+为了使 $\Delta_{pq}$ 具有明确的概率意义，分别建立其在可融合与不可融合状态下的条件分布：
+\begin{equation}
+    \Delta_{pq}\mid z_{pq}=1
+    \sim
+    \N(0,\sigma_s^2),
+    \label{eq:delta_same}
+\end{equation}
+\begin{equation}
+    \Delta_{pq}\mid z_{pq}=0
+    \sim
+    \N(0,\sigma_d^2),
+    \qquad
+    \sigma_d>\sigma_s.
+    \label{eq:delta_diff}
+\end{equation}
+其中 $\sigma_s$ 描述同一表面时相对深度差的集中程度，$\sigma_d$ 则描述不同表面时更为分散的差异分布。该模型刻画的是邻域尺度上的相对关系：在同一表面内部，$\Delta_{pq}$ 由单目的局部相对误差主导，因而集中；跨表面时，$\Delta_{pq}$ 还包含场景本身的深度跳变，因而散布更大。
+
+由此得到几何似然比
+\begin{equation}
+    \boxed{
+    \Lambda_{\Delta}(\Delta_{pq})
+    \triangleq
+    \frac{p(\Delta_{pq}\mid z_{pq}=1)}
+    {p(\Delta_{pq}\mid z_{pq}=0)}
+    =
+    \frac{\sigma_d}{\sigma_s}
+    \exp\!\left[
+    -\frac{\Delta_{pq}^{2}}{2}
+    \left(
+    \frac{1}{\sigma_s^2}
+    -
+    \frac{1}{\sigma_d^2}
+    \right)
+    \right]
+    }.
+    \label{eq:geometry_bayes_factor}
+\end{equation}
+由于 $\sigma_d>\sigma_s$，有
+\begin{equation}
+    |\Delta_{pq}|\uparrow
+    \quad\Longrightarrow\quad
+    \Lambda_{\Delta}(\Delta_{pq})\downarrow.
+    \label{eq:soft_gate_monotonic}
+\end{equation}
+因此，$\Delta_{pq}$ 在概率意义上形成了一个连续的几何软门控：像素间单目深度差越大，其来自同一表面的后验支持越弱，而不是采用不可导的硬阈值直接删除邻居。
+
+\subsection{匹配得分的条件概率模型}
+
+由于 $\rho_{pq}$ 是以 $\Delta_{pq}$ 确定的搜索中心为基础，通过局部匹配滤波得到的统计量，其概率模型宜写成条件形式
+\begin{equation}
+    p(\rho_{pq}\mid\Delta_{pq},z_{pq}).
+    \label{eq:rho_conditional_model}
+\end{equation}
+这样无需额外假设 $\Delta_{pq}$ 与 $\rho_{pq}$ 条件独立。
+
+由于 $\rho_{pq}\in(0,1)$，可以采用条件 Beta 分布进行参数化：
+\begin{equation}
+    \rho_{pq}\mid\Delta_{pq},z_{pq}=1
+    \sim
+    \BetaDist\!\left(
+    a_s(\Delta_{pq}),b_s(\Delta_{pq})
+    \right),
+    \label{eq:rho_same}
+\end{equation}
+\begin{equation}
+    \rho_{pq}\mid\Delta_{pq},z_{pq}=0
+    \sim
+    \BetaDist\!\left(
+    a_d(\Delta_{pq}),b_d(\Delta_{pq})
+    \right).
+    \label{eq:rho_diff}
+\end{equation}
+其中 $a_s(\Delta),b_s(\Delta),a_d(\Delta),b_d(\Delta)$ 可以由训练数据拟合；若数据表明匹配得分分布与 $\Delta$ 的依赖较弱，则可退化为常数参数的 Beta 分布。
+
+记 Beta 密度为
+\begin{equation}
+    f_{\mathrm B}(\rho;a,b)
+    =
+    \frac{\rho^{a-1}(1-\rho)^{b-1}}
+    {B(a,b)},
+    \qquad 0<\rho<1.
+    \label{eq:beta_pdf}
+\end{equation}
+则条件匹配证据的似然比为
+\begin{equation}
+    \Lambda_{\rho}(\rho_{pq}\mid\Delta_{pq})
+    =
+    \frac{
+    p(\rho_{pq}\mid\Delta_{pq},z_{pq}=1)
+    }{
+    p(\rho_{pq}\mid\Delta_{pq},z_{pq}=0)
+    }.
+    \label{eq:rho_bayes_factor_general}
+\end{equation}
+若 Beta 参数采用常数形式，则式~\eqref{eq:rho_bayes_factor_general}具体化为
+\begin{equation}
+    \Lambda_{\rho}(\rho_{pq})
+    =
+    \frac{B(a_d,b_d)}{B(a_s,b_s)}
+    \rho_{pq}^{a_s-a_d}
+    (1-\rho_{pq})^{b_s-b_d}.
+    \label{eq:rho_bayes_factor}
+\end{equation}
+当训练数据呈现``可融合邻居具有更高匹配得分''的规律时，较大的 $\rho_{pq}$ 将倾向于提高该邻居可融合的后验概率。
+
+\subsection{后验可融合概率}
+
+设可融合性的先验概率为
+\begin{equation}
+    \pi_{pq}
+    \triangleq
+    \Pbb(z_{pq}=1),
+    \qquad
+    0<\pi_{pq}<1.
+    \label{eq:prior_pi}
+\end{equation}
+由概率链式法则，联合条件似然可写为
+\begin{equation}
+    p(\Delta_{pq},\rho_{pq}\mid z_{pq})
+    =
+    p(\Delta_{pq}\mid z_{pq})
+    p(\rho_{pq}\mid\Delta_{pq},z_{pq}).
+    \label{eq:conditional_factorization}
+\end{equation}
+因此，联合证据的 Bayes 因子为
+\begin{equation}
+    \Lambda_{pq}
+    =
+    \Lambda_{\Delta}(\Delta_{pq})
+    \Lambda_{\rho}(\rho_{pq}\mid\Delta_{pq}).
+    \label{eq:joint_bayes_factor}
+\end{equation}
+由 Bayes 定理，邻居 $q$ 的后验可融合概率为
+\begin{equation}
+    \boxed{
+    \gamma_{pq}
+    \triangleq
+    \Pbb(z_{pq}=1\mid\Delta_{pq},\rho_{pq})
+    =
+    \frac{
+    \pi_{pq}\Lambda_{pq}
+    }{
+    (1-\pi_{pq})+\pi_{pq}\Lambda_{pq}
+    }
+    }.
+    \label{eq:posterior_fusibility}
+\end{equation}
+等价地，在对数几率域中
+\begin{equation}
+    \logit(\gamma_{pq})
+    =
+    \logit(\pi_{pq})
+    +
+    \log\Lambda_{\Delta}(\Delta_{pq})
+    +
+    \log\Lambda_{\rho}(\rho_{pq}\mid\Delta_{pq}).
+    \label{eq:posterior_logit}
+\end{equation}
+式~\eqref{eq:posterior_logit}明确给出了两类证据的作用：$\Delta_{pq}$ 负责提供几何软门控，$\rho_{pq}$ 负责验证实际观测匹配，二者以可加的方式共同更新邻居属于可融合状态的后验概率。
+
+\section{融合误差建模与最终贝叶斯融合权重}
+\label{sec:fusion_weight}
+
+本章将每个参与融合的直方图视为一个独立的观测来源，统一考虑其 SPAD 测量误差与直方图对齐误差，并在此基础上推导最终融合权重。前一节得到的 $\gamma_{pq}$ 仅回答邻居\emph{是否}处于可融合状态；本章进一步回答：在考虑测量与对齐不确定性之后，该邻居\emph{应该贡献多少}。
+
+\subsection{单个邻居的总误差}
+
+由式~\eqref{eq:final_shift}，最终实际使用的对齐量为 $\hat k_{pq}$。定义真实相对位移为 $\mu_p-\mu_q$，则最终对齐误差定义为
+\begin{equation}
+    \epsilon_{pq}
+    \triangleq
+    \hat k_{pq}-(\mu_p-\mu_q).
+    \label{eq:alignment_error}
+\end{equation}
+令粗对齐量的取整残差为
+\begin{equation}
+    r_{pq}
+    \triangleq
+    k_{pq}^{M}-\Delta_{pq},
+    \qquad
+    |r_{pq}|\leq\frac12,
+    \label{eq:quantization_error}
+\end{equation}
+则结合式~\eqref{eq:delta_error}和式~\eqref{eq:final_shift}，有
+\begin{equation}
+    \boxed{
+    \epsilon_{pq}
+    =
+    (e_p-e_q)+r_{pq}+\hat\delta_{pq}
+    }.
+    \label{eq:alignment_error_decomposition}
+\end{equation}
+式~\eqref{eq:alignment_error_decomposition}给出了最终对齐误差的三个来源：单目局部相对误差 $e_p-e_q$、量化残差 $r_{pq}$、以及局部匹配修正 $\hat\delta_{pq}$。其中前两项完全由先验与离散化决定，第三项由观测数据选择得到，其与单目误差和取整残差一般并不独立，因此不能简单地将各项方差直接相加。一般地，定义对齐误差的均值和方差为
+\begin{equation}
+    m_{\epsilon,pq}
+    \triangleq
+    \E[\epsilon_{pq}],
+    \qquad
+    \sigma_{\epsilon,pq}^{2}
+    \triangleq
+    \Var(\epsilon_{pq}),
+    \label{eq:alignment_moments}
+\end{equation}
+其中 $\sigma_{\epsilon,pq}^{2}$ 可以由配对标注数据、重复观测或所采用的对齐误差模型进行估计。
+
+从式~\eqref{eq:alignment_error}可知，对齐后的邻居回波中心位于
+\begin{equation}
+    \mu_q+\hat k_{pq}
+    =
+    \mu_p+\epsilon_{pq},
+    \label{eq:aligned_center}
+\end{equation}
+因此，$\epsilon_{pq}$ 是该邻居相对于目标真实回波位置的附加位置误差。
+
+\subsection{每个直方图的测量误差与有效方差}
+
+从对齐后的邻居直方图 $\widetilde H_{pq}$ 提取回波中心观测 $y_{pq}$。在局部高斯近似下，将其写为
+\begin{equation}
+    y_{pq}
+    =
+    \mu_p+\epsilon_{pq}+n_{pq},
+    \label{eq:neighbor_error_model}
+\end{equation}
+其中 $n_{pq}$ 表示 SPAD 直方图本身的回波中心测量误差。其方差由 \S\ref{sec:spad} 的含背景光 Fisher 信息给出，记为 $v_q$，即
+\begin{equation}
+    \boxed{
+    v_q
+    \approx
+    \left[
+    N_q^2
+    \sum_b
+    \frac{[h'(b-\mu_q)]^2}
+    {N_qh(b-\mu_q)+\beta_q}
+    \right]^{-1}
+    }.
+    \label{eq:vq_background}
+\end{equation}
+若在给定局部状态下，SPAD 测量误差与对齐误差近似条件独立，并且对齐残差已进行偏差校准，使 $m_{\epsilon,pq}\approx0$，则单个邻居的总误差方差为
+\begin{equation}
+    \boxed{
+    v_{pq}^{\mathrm{eff}}
+    =
+    \Var(y_{pq}-\mu_p)
+    \approx
+    v_q+\sigma_{\epsilon,pq}^{2}
+    }.
+    \label{eq:effective_variance}
+\end{equation}
+因此，式~\eqref{eq:effective_variance}同时包含两部分不确定性：$v_q$ 描述光子计数、背景光等造成的测量误差；$\sigma_{\epsilon,pq}^{2}$ 描述单目引导与局部匹配对齐造成的附加误差。
+
+\subsection{所有邻居的加权融合误差}
+
+设最终用于融合的邻居回波观测为 $\{y_{pq}\}_{q\in\mathcal N_p}$，赋予每个邻居一个归一化融合系数 $\alpha_{pq}$，满足
+\begin{equation}
+    \alpha_{pq}\geq0,
+    \qquad
+    \sum_{q\in\mathcal N_p}\alpha_{pq}=1.
+    \label{eq:alpha_constraint}
+\end{equation}
+相应的融合估计为
+\begin{equation}
+    \hat\mu_p
+    =
+    \sum_{q\in\mathcal N_p}
+    \alpha_{pq}y_{pq}.
+    \label{eq:weighted_estimator}
+\end{equation}
+将式~\eqref{eq:neighbor_error_model}代入可得
+\begin{equation}
+    \hat\mu_p-\mu_p
+    =
+    \sum_{q\in\mathcal N_p}
+    \alpha_{pq}
+    (\epsilon_{pq}+n_{pq}).
+    \label{eq:total_fusion_error}
+\end{equation}
+因此，在一般相关情形下，融合估计的协方差形式为
+\begin{equation}
+    \Var(\hat\mu_p-\mu_p)
+    =
+    \bm\alpha_p^{\mathsf T}
+    \bm\Sigma_p
+    \bm\alpha_p,
+    \label{eq:general_fusion_variance}
+\end{equation}
+其中 $\bm\Sigma_p$ 是所有邻居总误差
+\[
+\{\epsilon_{pq}+n_{pq}\}_{q\in\mathcal N_p}
+\]
+的协方差矩阵。若不同邻居之间的总误差近似独立，则式~\eqref{eq:general_fusion_variance}退化为
+\begin{equation}
+    \Var(\hat\mu_p-\mu_p)
+    \approx
+    \sum_{q\in\mathcal N_p}
+    \alpha_{pq}^{2}
+    \left(v_q+\sigma_{\epsilon,pq}^{2}\right).
+    \label{eq:independent_fusion_variance}
+\end{equation}
+若对齐误差存在系统偏差，则融合均方误差还应包括
+\begin{equation}
+    \operatorname{MSE}(\hat\mu_p)
+    =
+    \left(
+    \sum_{q\in\mathcal N_p}
+    \alpha_{pq}m_{\epsilon,pq}
+    \right)^2
+    +
+    \bm\alpha_p^{\mathsf T}
+    \bm\Sigma_p
+    \bm\alpha_p.
+    \label{eq:fusion_mse}
+\end{equation}
+实际实现中可首先对系统性偏差进行校准，再使用残差方差进行权重计算。
+
+\subsection{从可融合性后验到最终贝叶斯精度}
+
+在 $z_{pq}=1$ 条件下，利用式~\eqref{eq:effective_variance}采用局部高斯观测模型
+\begin{equation}
+    y_{pq}\mid\mu_p,z_{pq}=1
+    \sim
+    \N\!\left(\mu_p,v_{pq}^{\mathrm{eff}}\right).
+    \label{eq:y_gaussian}
+\end{equation}
+对于 $z_{pq}=0$，将邻居观测视为与 $\mu_p$ 无关的异常或非信息分量，记其密度为 $g_{pq}(y)$，即
+\begin{equation}
+    p(y_{pq}\mid\mu_p,z_{pq}=0)
+    =
+    g_{pq}(y_{pq}),
+    \qquad
+    \frac{\partial g_{pq}(y_{pq})}{\partial\mu_p}=0.
+    \label{eq:outlier_model}
+\end{equation}
+于是，在给定 $(\Delta_{pq},\rho_{pq})$ 时，完整数据负对数似然中与 $\mu_p$ 有关的部分可写为
+\begin{equation}
+    -\log p(y_{pq},z_{pq}\mid\mu_p)
+    \doteq
+    \frac{z_{pq}}{2v_{pq}^{\mathrm{eff}}}
+    (y_{pq}-\mu_p)^2,
+    \label{eq:complete_nll}
+\end{equation}
+其中 $\doteq$ 表示忽略与 $\mu_p$ 无关的常数项。
+
+由上一节得到的后验概率满足
+\begin{equation}
+    \E[z_{pq}\mid\Delta_{pq},\rho_{pq}]
+    =
+    \gamma_{pq}.
+    \label{eq:ez_gamma}
+\end{equation}
+对式~\eqref{eq:complete_nll} 关于 $z_{pq}$ 取后验期望，得到
+\begin{equation}
+    \mathcal L_{pq}(\mu_p)
+    \doteq
+    \frac{\gamma_{pq}}
+    {2v_{pq}^{\mathrm{eff}}}
+    (y_{pq}-\mu_p)^2.
+    \label{eq:expected_loss}
+\end{equation}
+因此，邻居 $q$ 对目标 $p$ 的后验期望精度定义为
+\begin{equation}
+    \boxed{
+    c_{pq}
+    \triangleq
+    \frac{\gamma_{pq}}
+    {v_{pq}^{\mathrm{eff}}}
+    =
+    \frac{\gamma_{pq}}
+    {v_q+\sigma_{\epsilon,pq}^{2}}
+    }.
+    \label{eq:final_c}
+\end{equation}
+该式将``是否值得融合''和``融合后有多准确''统一到同一个统计量中：$\gamma_{pq}$ 描述邻居处于可融合状态的后验概率，而分母描述该邻居在可融合条件下所携带的总测量不确定性。
+
+\subsection{最终融合系数与估计量}
+
+将所有邻居的后验期望损失相加，得到
+\begin{equation}
+    \mathcal L(\mu_p)
+    =
+    \frac12
+    \sum_{q\in\mathcal N_p}
+    c_{pq}(y_{pq}-\mu_p)^2.
+    \label{eq:global_loss}
+\end{equation}
+令其关于 $\mu_p$ 的导数为零，可得
+\begin{equation}
+    \hat\mu_p
+    =
+    \frac{
+    \sum_{q\in\mathcal N_p}c_{pq}y_{pq}
+    }{
+    \sum_{q\in\mathcal N_p}c_{pq}
+    }.
+    \label{eq:fused_mu}
+\end{equation}
+因此定义归一化融合系数
+\begin{equation}
+    \alpha_{pq}
+    =
+    \frac{c_{pq}}
+    {\sum_{r\in\mathcal N_p}c_{pr}},
+    \qquad
+    \sum_{q\in\mathcal N_p}\alpha_{pq}=1,
+    \label{eq:alpha_final}
+\end{equation}
+最终估计为
+\begin{equation}
+    \hat\mu_p
+    =
+    \sum_{q\in\mathcal N_p}
+    \alpha_{pq}y_{pq}.
+    \label{eq:fused_mu_alpha}
+\end{equation}
+
+将式~\eqref{eq:posterior_fusibility}代入式~\eqref{eq:final_c}，最终后验期望精度可写为
+\begin{equation}
+    \boxed{
+    c_{pq}
+    =
+    \frac{1}{v_q+\sigma_{\epsilon,pq}^{2}}
+    \frac{
+    \pi_{pq}
+    \Lambda_{\Delta}(\Delta_{pq})
+    \Lambda_{\rho}(\rho_{pq}\mid\Delta_{pq})
+    }{
+    (1-\pi_{pq})
+    +
+    \pi_{pq}
+    \Lambda_{\Delta}(\Delta_{pq})
+    \Lambda_{\rho}(\rho_{pq}\mid\Delta_{pq})
+    }
+    }.
+    \label{eq:c_fully_expanded}
+\end{equation}
+
+式~\eqref{eq:c_fully_expanded}即为理想条件下的概率融合权重：几何软门控、匹配滤波证据、背景光导致的测量不确定性以及对齐误差均通过统一的概率模型进入最终精度。理想权重同样呈现``可靠性 $\times$ 精度''的因子结构——这为下一章构造工程实现提供了明确的分解方向。
+
+\section{从理想模型到可标定的实现}
+\label{sec:practical_approximation}
+
+理想权重式~\eqref{eq:c_fully_expanded}的前提是：后验可融合概率 $\gamma_{pq}$、测量方差 $v_q$ 与对齐方差 $\sigma_{\epsilon,pq}^{2}$ 均可在运行时逐像素、逐邻居地获得。本章首先分析这一前提在单次实际观测中的成立程度，然后构造一个与理想模型结构一致、且所有自由参数均可由验证数据标定的可计算实现。
+
+\subsection{理想权重的两个因子}
+
+将理想精度权重重写为
+\begin{equation}
+    c_{pq}^{\star}
+    =
+    \underbrace{\gamma_{pq}}_{\text{可靠性因子}}
+    \cdot
+    \underbrace{\frac{1}{v_q+\sigma_{\epsilon,pq}^{2}}}_{\text{精度因子}}.
+    \label{eq:ideal_bayesian_precision}
+\end{equation}
+该分解指出了实际实现需要提供的两样东西：一个近似 $\gamma_{pq}$ 的\emph{可靠性因子}，刻画邻居是否值得融合；一个近似 $1/(v_q+\sigma_{\epsilon,pq}^{2})$ 的\emph{精度因子}，刻画邻居携带多少信息。二者来源不同，下面分别处理。
+
+\subsection{运行时可获得性分析}
+
+理想模型涉及的统计量按获得途径可分为三类：
+
+\begin{enumerate}
+    \item \textbf{运行时直接可得}：$\Delta_{pq}$、$k_{pq}^{M}$、$\hat k_{pq}$、$\rho_{pq}$ 均由单目先验与当前 SPAD 观测经 \S\ref{sec:alignment} 的流程直接计算；
+    \item \textbf{需离线建模}：$\pi_{pq}$、$p(\Delta_{pq}\mid z_{pq})$、$p(\rho_{pq}\mid\Delta_{pq},z_{pq})$ 涉及潜变量 $z_{pq}$ 的条件分布，严格确定需要带标注的数据或重复观测统计，可作为离线研究对象；
+    \item \textbf{单次观测不可直接观测}：$\sigma_{\epsilon,pq}^{2}$ 依赖真实相对深度与最终对齐误差的关系，$v_q$ 依赖未知的信号光子数 $N_q$ 与背景率 $\beta_q$。
+\end{enumerate}
+
+本文的策略是：不为第二、三类统计量虚构运行时估计，而是构造只依赖第一类可计算量、且所有自由参数均由验证数据离线标定的代理形式。代理的函数形状尽量继承理想模型的结构（如 \S\ref{sec:fusibility} 中似然比的形状），自由参数则以标定而非硬编码的方式确定。
+
+\subsection{可靠性因子}
+\label{sec:reliability_factor}
+
+\paragraph{几何项。}
+由式~\eqref{eq:geometry_bayes_factor}，几何似然比在 $|\Delta_{pq}|$ 上是单调递减的高斯型函数，且其中的常数因子 $\sigma_d/\sigma_s$ 与 $\Delta_{pq}$ 无关、将在归一化中消去。据此，几何项采用与 $\Lambda_\Delta$ 同形状的单参数形式：
+\begin{equation}
+    g_{\Delta}(\Delta_{pq})
+    =
+    \exp\!\left(
+    -\frac{\Delta_{pq}^{2}}
+    {2\sigma_w^{2}}
+    \right),
+    \label{eq:engineering_geometry_gate}
+\end{equation}
+其中 $\sigma_w$ 为几何软门控的尺度参数，是\textbf{标定参数}：其量级应与单目局部相对误差的尺度（对应理想模型中的 $\sigma_s$）一致，具体取值由验证数据确定（标定协议见 \S\ref{sec:calibration}）。该项保留了理想模型的核心性质：$|\Delta_{pq}|$ 越大，邻居与目标属于同一表面的可信程度越低，其融合贡献被连续抑制。
+
+\paragraph{匹配项。}
+理想模型中匹配证据的作用由似然比 $\Lambda_\rho$（式~\eqref{eq:rho_bayes_factor}）刻画，但该式所需的 Beta 条件分布参数依赖带 $z$ 标签的数据，通常不可得。因此采用 $\rho_{pq}$ 的单调仿射函数作为其最简代理：
+\begin{equation}
+    \boxed{
+    g_{\rho}(\rho_{pq})
+    =
+    \rho_{\mathrm{floor}}
+    +
+    \left(1-\rho_{\mathrm{floor}}\right)\rho_{pq},
+    \qquad
+    0\leq\rho_{\mathrm{floor}}<1
+    }.
+    \label{eq:engineering_match_reliability}
+\end{equation}
+该形式继承了两点结构性质：其一，$g_\rho$ 关于 $\rho$ 单调递增，与``可融合邻居具有更高匹配得分''的规律（\S\ref{sec:fusibility}）一致；其二，$\rho_{\mathrm{floor}}$ 给出低分邻居的保底贡献，避免单次匹配得分偏低时将邻居完全硬性删除，对应理想模型中硬删除并非贝叶斯最优这一事实——当先验支持存在时，低证据邻居仍应保留非零权重。
+
+需要强调，$\rho_{\mathrm{floor}}$ 不是固定常数，而是\textbf{标定参数}：$\rho_{\mathrm{floor}}\to0$ 时退化为纯比例权重（匹配得分完全主导），$\rho_{\mathrm{floor}}\to1$ 时趋于均匀权重（匹配得分失去区分作用），其最优值取决于数据的匹配得分分布，应由验证数据确定。此外，若确有标注数据可拟合式~\eqref{eq:rho_bayes_factor} 的 Beta 条件分布，则 $g_\rho$ 可直接替换为校准后的 $\Lambda_\rho$，整个融合框架无需改动。
+
+\subsection{精度因子：基于峰显著度的信号代理}
+\label{sec:precision_proxy}
+
+理想权重中的精度因子 $1/(v_q+\sigma_{\epsilon,pq}^{2})$ 不能不加论证地忽略：由式~\eqref{eq:vq_background}，$v_q$ 随信号光子数 $N_q$ 与背景率 $\beta_q$ 变化，而邻域内近处目标与远处目标的光子数可以相差数倍，``各邻居方差近似相等、可在归一化中消去''的假设在一般场景下并不成立。因此本文为精度因子保留一个显式的可计算代理。
+
+在弱背景近似（$\beta_q\ll N_q$）与高斯 IRF（方差 $\sigma_h^2$）下，式~\eqref{eq:vq_background}退化为式~\eqref{eq:v_classical}，即 $v_q\approx\sigma_h^2/N_q$。同一场景内 $\sigma_h^2$ 为常数，故精度因子由信号光子数 $N_q$ 主导。$N_q$ 虽不可直接观测，但可由邻居直方图自身估计：
+\begin{equation}
+    \hat N_q
+    =
+    \sum_{b\in\Omega_q}
+    \left(H_q(b)-\hat\beta_q\right),
+    \label{eq:signal_count_proxy}
+\end{equation}
+其中 $\Omega_q$ 为邻居 $q$ 峰值附近的信号窗口，$\hat\beta_q$ 为背景基线估计（如取直方图两侧分位数或中位数）。$\hat N_q$ 恰是直方图峰显著度的直接度量——信号越强，峰越突出，$\hat N_q$ 越大。据此取精度因子代理为
+\begin{equation}
+    \hat u_q
+    =
+    \frac{1}{\hat N_q+\hat N_0},
+    \label{eq:precision_proxy}
+\end{equation}
+其中 $\hat N_0>0$ 为正则化项（\textbf{标定参数}），防止低信号邻居的权重发散，其作用量级对应理想模型中背景光导致的方差下限。$\hat u_q$ 在归一化中自动消去公共尺度，其相对取值随邻居信号强度变化：信号弱的邻居贡献被连续压低，这正是 $1/N_q$ 反比关系所要求的。
+
+当应用场景中邻域内信号强度变异有限、或峰值估计不可靠（例如多峰、强背景）时，可将 $\hat u_q$ 置为常数 $1$，实现退化为仅可靠性加权；该选择本身也可在验证数据上比对后确定。
+
+\subsection{标定参数汇总与标定协议}
+\label{sec:calibration}
+
+综合以上，实际实现的融合权重为
+\begin{equation}
+    \boxed{
+    w_{pq}
+    =
+    g_{\Delta}(\Delta_{pq})\,
+    g_{\rho}(\rho_{pq})\,
+    \hat u_q
+    =
+    \exp\!\left(
+    -\frac{\Delta_{pq}^{2}}
+    {2\sigma_w^{2}}
+    \right)
+    \left(\rho_{\mathrm{floor}}
+    +
+    (1-\rho_{\mathrm{floor}})\rho_{pq}\right)
+    \frac{1}{\hat N_q+\hat N_0}
+    }.
+    \label{eq:engineering_weight}
+\end{equation}
+将式~\eqref{eq:engineering_weight}归一化后得到最终融合系数
+\begin{equation}
+    \alpha_{pq}
+    =
+    \frac{w_{pq}}
+    {\sum_{r\in\mathcal N_p}w_{pr}}.
+    \label{eq:engineering_alpha}
+\end{equation}
+
+\begin{table}[htbp]
+    \centering
+    \caption{标定参数及其确定方式}
+    \label{tab:calibration}
+    \begin{tabular}{lll}
+        \toprule
+        参数 & 含义 & 标定方式 \\
+        \midrule
+        $\sigma_w$ & 几何软门控尺度 & 验证集 MAE 网格搜索；量级对齐单目局部相对误差 \\
+        $\rho_{\mathrm{floor}}$ & 匹配得分保底贡献 & 验证集 MAE 一维搜索；界于比例权重与均匀权重之间 \\
+        $\hat N_0$ & 精度代理正则化 & 验证集 MAE 网格搜索；对应背景光方差下限量级 \\
+        $\Omega_q,\hat\beta_q$ & 峰值窗口与背景估计 & 固定协议（窗口宽度、分位数）后随其他参数联合验证 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+标定协议如下：固定搜索窗口半宽 $K$ 与匹配算子后，逐一在验证集上以最终深度误差（如 MAE）为目标对 $\sigma_w$、$\rho_{\mathrm{floor}}$、$\hat N_0$ 进行一维搜索（它们分别控制门控锐度、保底水平与精度对比度，相互耦合较弱）；参数一经标定，在测试与部署阶段保持冻结，不再逐场景调整。
+
+关于该实现与理想模型的差距，可以明确区分两个来源：一是\emph{代理形式的模型误差}——仿射 $g_\rho$ 与高斯 $g_\Delta$ 只是理想似然比的单参数近似；二是\emph{参数估计误差}——标定参数由有限验证数据得到。前者在有标注数据时可通过替换为校准似然比消除（见 \S\ref{sec:reliability_factor}），后者随验证数据规模减小。工程权重式~\eqref{eq:engineering_weight}因此应被理解为理想贝叶斯权重在给定信息约束下的\emph{可标定近似}，其每个自由参数都有明确的模型对应物与标定途径，而非任意的固定常数。
+
+\section{实际推理流程与最终融合}
+\label{sec:inference_pipeline}
+
+最后将全文各部分汇总为实际推理流程。对目标像素 $p$ 及其邻域 $\mathcal N_p$：
+
+\begin{enumerate}
+    \item 由单目相对深度计算 $\Delta_{pq}$，并确定局部匹配搜索中心 $k_{pq}^{M}$（\S\ref{sec:alignment}）；
+    \item 在局部窗口 $\mathcal W$ 内进行匹配滤波，获得最佳局部偏移 $\hat\delta_{pq}$、实际对齐量 $\hat k_{pq}$ 以及归一化匹配得分 $\rho_{pq}$，对齐后的邻居直方图为 $\widetilde H_{pq}(b)=H_q(b-\hat k_{pq})$；
+    \item 估计各邻居的信号光子数 $\hat N_q$（式~\eqref{eq:signal_count_proxy}），并按式~\eqref{eq:engineering_weight}计算融合权重
+    \begin{equation}
+    w_{pq}
+    =
+    \exp\!\left(
+    -\frac{\Delta_{pq}^{2}}
+    {2\sigma_w^{2}}
+    \right)
+    \left(\rho_{\mathrm{floor}}
+    +
+    (1-\rho_{\mathrm{floor}})\rho_{pq}\right)
+    \frac{1}{\hat N_q+\hat N_0};
+    \label{eq:runtime_weight}
+    \end{equation}
+    \item 归一化得到融合系数
+    \begin{equation}
+    \alpha_{pq}
+    =
+    \frac{w_{pq}}
+    {\sum_{r\in\mathcal N_p}w_{pr}},
+    \qquad
+    \sum_{q\in\mathcal N_p}\alpha_{pq}=1,
+    \label{eq:runtime_alpha}
+    \end{equation}
+    并对对齐后的邻域直方图进行融合：
+    \begin{equation}
+    \boxed{
+    H_p^{\mathrm{fuse}}(b)
+    =
+    \sum_{q\in\mathcal N_p}
+    \alpha_{pq}
+    \widetilde H_{pq}(b)
+    }.
+    \label{eq:fused_histogram}
+    \end{equation}
+    \item 由融合后的直方图提取目标回波中心，得到最终深度坐标估计 $\hat\mu_p$。
+\end{enumerate}
+
+整个流程的数据通路为
+\begin{equation}
+    \boxed{
+    \text{单目相对深度}
+    \rightarrow
+    \Delta_{pq}
+    \rightarrow
+    \text{局部匹配滤波}
+    \rightarrow
+    (\hat k_{pq},\rho_{pq})
+    \rightarrow
+    w_{pq}
+    \rightarrow
+    \alpha_{pq}
+    \rightarrow
+    H_p^{\mathrm{fuse}}(b)
+    \rightarrow
+    \hat\mu_p
+    }.
+    \label{eq:final_algorithm_chain}
+\end{equation}
+
+流程中实际使用的每一项——$\Delta_{pq}$、$\hat k_{pq}$、$\rho_{pq}$、$\hat N_q$——均由单目先验与当前 SPAD 观测直接计算，三个标定参数 $\sigma_w$、$\rho_{\mathrm{floor}}$、$\hat N_0$ 由验证数据离线确定。同时，该实现保留了理想贝叶斯模型揭示的核心结构：几何一致性（$g_\Delta$）用于抑制来自不同表面的观测，匹配一致性（$g_\rho$）用于评价局部对齐的可信度，信号强度（$\hat u_q$）用于压低低光子数邻居的贡献，而归一化后的权重决定各邻域直方图对最终估计的贡献。
+
+\end{document}

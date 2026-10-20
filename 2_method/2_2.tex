@@ -1,0 +1,32 @@
+\subsection{死时间畸变与 Coates 校正}
+\label{sec:coates}
+
+实际 SPAD 在一个测距周期内至多记录最早到达的一个光子，死时间使原始直方图偏离式~\eqref{eq:poisson_obs}的独立泊松模型。设逐 bin 光子到达率为 $r_p(b)$，累积率 $R_p(b)=\sum_{b'\le b}r_p(b')$，帧内有效周期数为 $M$，则原始直方图在 $b$ 处的累积计数满足精确关系 $\mathrm{cum}(b)=M\big(1-e^{-R_p(b)}\big)$，其解析逆（Coates 校正）为
+\begin{equation}
+  \hat r_p(b)=\ln\frac{M-\mathrm{cum}(b-1)}{M-\mathrm{cum}(b)},
+  \label{eq:coates}
+\end{equation}
+其中 $\mathrm{cum}(b)=\sum_{b'\le b}H_p^{\mathrm{raw}}(b')$ 为原始直方图累积计数。该反演不含待调参数、对任意强度精确可逆：背景平坦底座反演后恢复常数率，窄峰的形状与中心位置近似保持，故校正不参与对齐量的定义，仅改变直方图取值标度与噪声结构。频率代换引入的统计误差为相对量级 $O(1/\sqrt{M})$ 的随机误差，可并入散粒噪声预算；当幸存周期数过少时反演方差失控，本文的测距窗设置使峰区自然满足可信条件。本文后续的对齐、匹配与融合均以校正后的率域直方图 $F_p(b)\triangleq\hat r_p(b)$ 为输入。
+
+\subsection{单目相对深度引导的局部对齐}
+\label{sec:alignment}
+
+设 $p$、$q$ 的单目深度坐标为 $b_p^M$、$b_q^M$，定义单目相对位移
+\begin{equation}
+  \Delta_{pq}\triangleq b_p^M-b_q^M=(\mu_p-\mu_q)+(e_p-e_q),
+  \label{eq:delta}
+\end{equation}
+其中 $e_p$、$e_q$ 为单目预测误差。$\Delta_{pq}$ 承担两个作用：提供邻居直方图局部搜索中心，并作为 $p$、$q$ 是否属于同一表面的几何证据；其中只含误差之差 $e_p-e_q$，单目全局尺度误差在对齐这一步自然抵消。量化到整数 bin 得粗对齐量 $k_{pq}^{M}=\operatorname{round}(\Delta_{pq})$，以其为中心在窗口 $\mathcal{W}=\{-K,\dots,K\}$ 内对候选偏移 $\delta$ 计算归一化匹配滤波得分
+\begin{equation}
+  \rho_{pq}(\delta)
+  =\NMF\!\big(H_p,\;H_q(b-k_{pq}^{M}-\delta)\big),
+  \label{eq:nmf}
+\end{equation}
+其中 $\NMF(\cdot,\cdot)$ 为归一化匹配滤波算子。取 $\hat\delta_{pq}=\argmax_{\delta\in\mathcal{W}}\rho_{pq}(\delta)$，则实际用于对齐的平移量为
+\begin{equation}
+  \hat k_{pq}=k_{pq}^{M}+\hat\delta_{pq},
+  \qquad
+  \widetilde H_{pq}(b)=H_q(b-\hat k_{pq}),
+  \label{eq:final_shift}
+\end{equation}
+其中 $\widetilde H_{pq}$ 为对齐到目标坐标系的邻居直方图；最优位置处的归一化得分记为 $\rho_{pq}=\max_\delta\rho_{pq}(\delta)\in(0,1)$。单目先验只负责将搜索限制在合理局部范围内，最终对齐位置由观测数据的匹配峰决定，$\rho_{pq}$ 记录该峰的匹配质量。

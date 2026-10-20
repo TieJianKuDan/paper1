@@ -1,0 +1,22 @@
+\subsection{含背景光的直方图观测模型}
+\label{sec:spad}
+
+设 $p$ 为目标像素，$q$ 为其邻域 $\mathcal{N}_p$ 中的邻居，$b$ 为直方图的离散 bin 坐标。目标回波与背景光子可视为独立泊松到达过程，故像素 $p$ 在 bin $b$ 的计数满足
+\begin{equation}
+  H_p(b)\sim\operatorname{Poisson}\!\big(\lambda_p(b)\big),
+  \qquad
+  \lambda_p(b)=N_p h(b-\mu_p)+\beta_p,
+  \label{eq:poisson_obs}
+\end{equation}
+其中 $\mu_p$ 为真实回波中心坐标，$N_p$ 为期望信号光子数，$h(\cdot)$ 为归一化系统脉冲响应（IRF），$\beta_p$ 为每 bin 平均背景与暗计数率。将 $\mu_p$ 视为待估参数，含背景泊松模型的 Fisher 信息为
+\begin{equation}
+  \mathcal{I}_p(\mu_p)
+  =N_p^2\sum_b\frac{[h'(b-\mu_p)]^2}{N_p h(b-\mu_p)+\beta_p},
+  \label{eq:fisher}
+\end{equation}
+其中 $h'$ 为 IRF 的导数。以 Fisher 信息的倒数近似回波中心估计方差 $v_p\approx\mathcal{I}_p^{-1}$；当 $\beta_p\rightarrow0$ 且 IRF 为方差 $\sigma_h^2$ 的高斯型时，退化为经典形式
+\begin{equation}
+  v_p\approx\frac{\sigma_h^2}{N_p},
+  \label{eq:v_classical}
+\end{equation}
+即估计方差与信号光子数成反比；背景光则经式~\eqref{eq:fisher}的分母增大逐 bin 方差、降低估计精度。该反比关系是 \ref{sec:engineering} 节精度因子的构造依据。
