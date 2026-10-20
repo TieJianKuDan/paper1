@@ -1,22 +1,57 @@
+% ================= II.A 观测模型 =================
+% 内容取自 method_full.tex 小节〈目标回波与背景光的泊松模型〉与〈背景条件下的回波中心方差〉；标题沿用原 2_1。
+
 \subsection{含背景光的直方图观测模型}
 \label{sec:spad}
 
-设 $p$ 为目标像素，$q$ 为其邻域 $\mathcal{N}_p$ 中的邻居，$b$ 为直方图的离散 bin 坐标。目标回波与背景光子可视为独立泊松到达过程，故像素 $p$ 在 bin $b$ 的计数满足
+在光子计数系统中，目标回波光子和背景光子可以近似视为独立泊松到达过程。因此，像素 $p$ 在 bin $b$ 上的总计数满足
 \begin{equation}
-  H_p(b)\sim\operatorname{Poisson}\!\big(\lambda_p(b)\big),
-  \qquad
-  \lambda_p(b)=N_p h(b-\mu_p)+\beta_p,
-  \label{eq:poisson_obs}
+    H_p(b)
+    \sim
+    \operatorname{Poisson}\!\left(\lambda_p(b;\mu_p)\right),
+    \label{eq:poisson_obs}
 \end{equation}
-其中 $\mu_p$ 为真实回波中心坐标，$N_p$ 为期望信号光子数，$h(\cdot)$ 为归一化系统脉冲响应（IRF），$\beta_p$ 为每 bin 平均背景与暗计数率。将 $\mu_p$ 视为待估参数，含背景泊松模型的 Fisher 信息为
+其中
 \begin{equation}
-  \mathcal{I}_p(\mu_p)
-  =N_p^2\sum_b\frac{[h'(b-\mu_p)]^2}{N_p h(b-\mu_p)+\beta_p},
-  \label{eq:fisher}
+    \lambda_p(b;\mu_p)
+    =
+    N_p h(b-\mu_p)+\beta_p.
+    \label{eq:lambda_background}
 \end{equation}
-其中 $h'$ 为 IRF 的导数。以 Fisher 信息的倒数近似回波中心估计方差 $v_p\approx\mathcal{I}_p^{-1}$；当 $\beta_p\rightarrow0$ 且 IRF 为方差 $\sigma_h^2$ 的高斯型时，退化为经典形式
+其中 $b$ 为直方图的离散 bin 坐标，$N_p$ 为期望信号光子数，$h(\cdot)$ 为归一化系统脉冲响应（impulse response function, IRF），$\mu_p$ 为真实回波中心坐标，$N_p h(b-\mu_p)$ 描述目标回波的期望光子分布；$\beta_p$ 描述每个 bin 的平均背景光子与暗计数。本文假设当前观测窗口内背景近似平坦；若背景随时间变化，只需将 $\beta_p$ 替换为非负函数 $\beta_p(b)$，以下推导仍成立。对每个 bin，由泊松分布的性质直接有
 \begin{equation}
-  v_p\approx\frac{\sigma_h^2}{N_p},
-  \label{eq:v_classical}
+    \E[H_p(b)] = \lambda_p(b;\mu_p),
+    \quad
+    \Var[H_p(b)] = \lambda_p(b;\mu_p).
+    \label{eq:poisson_moments_bg}
 \end{equation}
-即估计方差与信号光子数成反比；背景光则经式~\eqref{eq:fisher}的分母增大逐 bin 方差、降低估计精度。该反比关系是 \ref{sec:engineering} 节精度因子的构造依据。
+因此，背景光一方面提高直方图基线，另一方面增加每个 bin 的泊松方差，从而降低回波中心估计的统计精度。将回波中心 $\mu_p$ 视为待估参数，含背景泊松模型对应的 Fisher 信息为
+\begin{equation}
+    \mathcal I_p(\mu_p)
+    =
+    N_p^2
+    \sum_b
+    \frac{[h'(b-\mu_p)]^2}
+    {N_p h(b-\mu_p)+\beta_p}.
+    \label{eq:fisher}
+\end{equation}
+其中 $h'$ 为 IRF 的导数。由此得回波中心估计的 Cram\'er--Rao 下界为
+\begin{equation}
+    \Var(\hat\mu_p)
+    \geq
+    \frac{1}{\mathcal I_p(\mu_p)},
+    \label{eq:crlb_bg}
+\end{equation}
+其中 $\hat\mu_p$ 为由直方图构造的回波中心估计量。在局部渐近条件下，以 Fisher 信息倒数近似回波中心估计方差，记为
+\begin{equation}
+    v_p
+    \approx
+    \mathcal I_p(\mu_p)^{-1}.
+    \label{eq:v_from_fisher}
+\end{equation}
+因此，背景光越强，Fisher 信息越低，$v_p$ 越大。特别地，当 $\beta_p\rightarrow0$ 且采用高斯 IRF 时，式~\eqref{eq:fisher}退化为经典的无背景近似
+\begin{equation}
+    v_p\approx\frac{\sigma_h^2}{N_p},
+    \label{eq:v_classical}
+\end{equation}
+其中 $\sigma_h^2$ 是高斯 IRF 的方差。估计方差与信号光子数成反比这一关系将在第~\ref{sec:engineering}节中用于构造可在线计算的精度代理。

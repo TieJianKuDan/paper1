@@ -1,0 +1,50 @@
+% !TEX program = xelatex
+% ============================================================
+% 符号清单（工作记录文件，不进论文正文）
+% 用途：随正文撰写逐节登记已出现的字母记号及含义，统一口径。
+% 论文正文中不设符号表（含义在首次出现处行内解释）。
+% ============================================================
+\documentclass[11pt]{ctexart}
+\usepackage[a4paper,margin=2.4cm]{geometry}
+\usepackage{amsmath,amssymb,booktabs}
+% 记号宏（与 main.tex 导言区一致）
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Var}{\operatorname{Var}}
+
+\begin{document}
+
+\begin{center}
+  {\LARGE\bfseries 符号清单（工作记录）}
+\end{center}
+\vspace{0.5em}
+
+本文正文不设符号表，各记号含义在首次出现处以行内文字解释。本文件随撰写进度逐节登记，供后续各节写作时统一口径、避免记号冲突。
+
+\section*{II.A 含背景光的直方图观测模型（\texttt{2\_method/2\_1.tex}）}
+
+\begin{center}
+\begin{tabular}{@{}llp{0.58\textwidth}@{}}
+\toprule
+符号 & 含义 & 备注 \\
+\midrule
+$p$ & 目标像素（像元）索引 & \\
+$b$ & 直方图的离散 bin 坐标 & 每 bin 宽 $66.9\,\mathrm{ps}$，对应 $1\,\mathrm{cm}$ 深度 \\
+$H_p(b)$ & 像素 $p$ 的直方图在 bin $b$ 的光子计数 & 随机变量 \\
+$\lambda_p(b;\mu_p)$ & $H_p(b)$ 的期望（泊松参数） & $N_p h(b-\mu_p)+\beta_p$ \\
+$\mu_p$ & 像素 $p$ 的真实回波中心坐标 & 待估参数 \\
+$N_p$ & 像素 $p$ 的期望信号光子数 & \\
+$h(\cdot)$ & 归一化系统脉冲响应（IRF） & $\sum_b h(b-\mu_p)=1$ \\
+$\beta_p$ & 每 bin 平均背景光子与暗计数 & 平坦背景假设下为常数 \\
+$\beta_p(b)$ & 随 bin 变化的背景计数 & 背景非平坦时的推广形式 \\
+$\E[\cdot]$ & 期望算子 & \\
+$\Var[\cdot]$ & 方差算子 & \\
+$\mathcal I_p(\mu_p)$ & 像素 $p$ 含背景泊松模型下 $\mu_p$ 的 Fisher 信息 & \\
+$h'(\cdot)$ & IRF 的导数 & \\
+$\hat\mu_p$ & 由直方图构造的回波中心估计量 & Cram\'er--Rao 下界针对其方差 \\
+$v_p$ & 回波中心估计方差 & $v_p\approx\mathcal I_p^{-1}$；高斯无背景时 $\sigma_h^2/N_p$ \\
+$\sigma_h^2$ & 高斯 IRF 的方差 & \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\end{document}
