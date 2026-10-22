@@ -1,36 +1,29 @@
-\subsection{可融合性后验与贝叶斯融合权重}
+\subsection{可融合性概率模型}
 \label{sec:fusibility}
-
-定义二值潜变量 $z_{pq}\in\{0,1\}$：$z_{pq}=1$ 表示邻居 $q$ 可融合（对齐后可用于估计 $\mu_p$），$z_{pq}=0$ 表示不可融合（如来自不同表面或噪声巧合峰）。判断证据为 $(\Delta_{pq},\rho_{pq})$。设可融合状态下 $\Delta_{pq}\mid z_{pq}=1\sim\mathcal{N}(0,\sigma_s^2)$，不可融合状态下 $\Delta_{pq}\mid z_{pq}=0\sim\mathcal{N}(0,\sigma_d^2)$ 且 $\sigma_d>\sigma_s$，则几何似然比为
+定义二值潜变量 $z_{pq}\in\{0,1\}$：$z_{pq}=1$ 表示邻居 $q$ 的直方图在对齐后可参与融合，$z_{pq}=0$ 表示不可融合。判断证据为 $(\Delta_{pq},\rho_{pq})$。同一小表面内，单目预测的偏差近似共模，差分可将其消去，$\Delta_{pq}$ 更可信，值得融合。而跨表面时偏差方向很难保证一致，误差差不相消，$\Delta_{pq}$不可信，不值得融合。设可融合状态下 $\Delta_{pq}\mid z_{pq}=1\sim\mathcal{N}(0,\sigma_s^2)$，不可融合状态下 $\Delta_{pq}\mid z_{pq}=0\sim\mathcal{N}(0,\sigma_d^2)$，且 $\sigma_s<\sigma_d$。由此得到几何似然比
 \begin{equation}
   \Lambda_{\Delta}(\Delta_{pq})
   =\frac{\sigma_d}{\sigma_s}
   \exp\!\left[-\frac{\Delta_{pq}^2}{2}\Big(\frac{1}{\sigma_s^2}-\frac{1}{\sigma_d^2}\Big)\right],
   \label{eq:lambda_delta}
 \end{equation}
-其中 $\sigma_s$、$\sigma_d$ 分别刻画同一表面内单目局部相对误差的集中程度与跨表面时含深度跳变的散布程度。$\Lambda_\Delta$ 随 $|\Delta_{pq}|$ 单调递减，构成连续的几何软门控，而非硬阈值删除。匹配证据经条件 Beta 分布参数化为似然比 $\Lambda_\rho(\rho_{pq}\mid\Delta_{pq})$（有标注数据时可直接拟合）。由 Bayes 定理，后验可融合概率为
+它随 $|\Delta_{pq}|$ 单调递减，构成连续的几何软门控。
+
+互相关得分 $\rho_{pq}$ 的行为直接反映可融合性，即$\rho_{pq}$ 越大，可融合的后验支持越强。由于$\rho_{pq}\in[0,1]$，且在 $\Delta_{pq}$ 确定的搜索中心处取得，故其分布以 $\Delta_{pq}$ 为条件，无需二者条件独立的额外假设：设 $\rho_{pq}\mid\Delta_{pq},z_{pq}=1\sim\BetaDist\big(a_s(\Delta_{pq}),b_s(\Delta_{pq})\big)$，$\rho_{pq}\mid\Delta_{pq},z_{pq}=0\sim\BetaDist\big(a_d(\Delta_{pq}),b_d(\Delta_{pq})\big)$，由此得到互相关证据似然比
 \begin{equation}
-  \gamma_{pq}
+\begin{aligned}
+  \Lambda_{\rho}(\rho_{pq}\mid\Delta_{pq})
+  &=\frac{p(\rho_{pq}\mid\Delta_{pq},z_{pq}{=}1)}
+         {p(\rho_{pq}\mid\Delta_{pq},z_{pq}{=}0)}\\
+  &=\frac{\mathrm B(a_d,b_d)}{\mathrm B(a_s,b_s)}
+  \rho_{pq}^{\,a_s-a_d}(1-\rho_{pq})^{\,b_s-b_d},
+\end{aligned}
+\label{eq:lambda_rho}
+\end{equation}
+当 $a_s>a_d$、$b_s<b_d$，$\Lambda_{\rho}$ 随 $\rho_{pq}$ 单调递增，较大的 $\rho_{pq}$ 获得更强的可融合支持。设先验 $\pi_{pq}=\mathbb{P}(z_{pq}=1)$，由概率链式法则与 Bayes 定理，后验可融合概率为
+\begin{equation}
+  \gamma_{pq}\triangleq\mathbb{P}(z_{pq}=1\mid\Delta_{pq},\rho_{pq})
   =\frac{\pi_{pq}\Lambda_{\Delta}\Lambda_{\rho}}
-  {(1-\pi_{pq})+\pi_{pq}\Lambda_{\Delta}\Lambda_{\rho}},
+  {(1-\pi_{pq})+\pi_{pq}\Lambda_{\Delta}\Lambda_{\rho}}.
   \label{eq:gamma}
 \end{equation}
-其中 $\pi_{pq}=\mathbb{P}(z_{pq}=1)$ 为先验可融合概率。等价地在 logit 域中两类证据可加：几何提供软门控，匹配验证实际观测支持。
-
-定义最终对齐误差 $\epsilon_{pq}\triangleq\hat k_{pq}-(\mu_p-\mu_q)$，结合式~\eqref{eq:delta}与式~\eqref{eq:final_shift}得三来源分解
-\begin{equation}
-  \epsilon_{pq}=(e_p-e_q)+r_{pq}+\hat\delta_{pq},
-  \label{eq:epsilon}
-\end{equation}
-其中 $r_{pq}=k_{pq}^{M}-\Delta_{pq}\in[-\tfrac12,\tfrac12]$ 为取整残差。前两项由先验与离散化决定，第三项由观测选出且与前两者一般不独立，故各方差不能直接相加，对齐方差 $\sigma_{\epsilon,pq}^2$ 由配对标注数据或重复观测估计。对齐直方图的回波中心观测为 $y_{pq}=\mu_p+\epsilon_{pq}+n_{pq}$，其中测量噪声 $n_{pq}$ 的方差 $v_q$ 由式~\eqref{eq:fisher}给出。当测量与对齐误差条件独立且对齐偏差已校准时，总有效方差为
-\begin{equation}
-  v_{pq}^{\mathrm{eff}}=v_q+\sigma_{\epsilon,pq}^{2}.
-  \label{eq:veff}
-\end{equation}
-将可融合状态建模为高斯观测 $y_{pq}\mid z_{pq}=1\sim\mathcal{N}(\mu_p,v_{pq}^{\mathrm{eff}})$，不可融合状态视为与 $\mu_p$ 无关的异常分量；对完整数据负对数似然关于 $z_{pq}$ 取后验期望（利用 $\mathbb{E}[z_{pq}\mid\Delta_{pq},\rho_{pq}]=\gamma_{pq}$），得到邻居的后验期望精度
-\begin{equation}
-  c_{pq}=\frac{\gamma_{pq}}{v_{pq}^{\mathrm{eff}}}
-  =\frac{\gamma_{pq}}{v_q+\sigma_{\epsilon,pq}^{2}},
-  \label{eq:c_pq}
-\end{equation}
-它将``是否值得融合''（$\gamma_{pq}$）与``融合后有多准确''（分母）统一到同一统计量。令归一化系数 $\alpha_{pq}=c_{pq}/\sum_{r}c_{pr}$，融合估计为 $\hat\mu_p=\sum_{q\in\mathcal{G}_p}\alpha_{pq}y_{pq}$。代入式~\eqref{eq:gamma}展开可见，理想权重呈``可靠性（$\gamma_{pq}$）$\times$ 精度（$1/v_{pq}^{\mathrm{eff}}$）''的因子结构，为工程实现给出明确的分解方向。

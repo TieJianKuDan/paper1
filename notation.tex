@@ -85,4 +85,23 @@ $\widetilde F_{pq}(b)$ & 对齐到目标坐标系的邻居直方图 & $\widetild
 \end{tabular}
 \end{center}
 
+\section*{II.D 可融合性概率模型（\texttt{2\_method/2\_4.tex}）}
+
+\begin{center}
+\begin{tabular}{@{}llp{0.58\textwidth}@{}}
+\toprule
+符号 & 含义 & 备注 \\
+\midrule
+$z_{pq}$ & 二值潜变量：$q$ 与 $p$ 深度相近、可融合 & $z_{pq}=1$ 可融合，$z_{pq}=0$ 不可融合 \\
+$\sigma_s$ & 可融合状态下 $\Delta_{pq}$ 的散布 & 并入表面内真实深度起伏与单目误差之差 \\
+$\sigma_d$ & 不可融合状态下 $\Delta_{pq}$ 的散布 & 含跨表面深度跳变；$\sigma_d>\sigma_s$ \\
+$\Lambda_{\Delta}$ & 几何似然比 & 随 $|\Delta_{pq}|$ 单调递减的软门控 \\
+$\Lambda_{\rho}$ & 匹配证据似然比 & 幂式随 $\rho$ 单调递增（$a_s>a_d$、$b_s<b_d$ 时） \\
+$a_s,b_s,a_d,b_d$ & 条件 Beta 分布参数 & 可依赖 $\Delta_{pq}$；由标注数据拟合 \\
+$\pi_{pq}$ & 先验可融合概率 & $\pi_{pq}=\mathbb{P}(z_{pq}=1)$ \\
+$\gamma_{pq}$ & 后验可融合概率 & $\gamma_{pq}=\mathbb{P}(z_{pq}=1\mid\Delta_{pq},\rho_{pq})$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
 \end{document}
