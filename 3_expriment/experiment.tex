@@ -97,7 +97,7 @@ $\hat\beta_q$ & 背景（底座）估计 & 直方图 $20\%$ 分位数 \\
 \end{tabular}
 \end{table}
 
-评价指标与 CASPI~\cite{caspi}原论文口径一致：绝对平均误差（MAE）、中位数误差与 inlier 比例，其中 inlier 比例为相对误差 $\lvert\hat\mu_p-\mu_p\rvert/\mu_p$ 小于 $0.2\%$、$0.5\%$、$1\%$ 的像素占比，以降采样至对应网格的 NYU 深度真值为参考。全部实验均在 464 个场景的完整集合上进行。
+评价指标与 CASPI~\cite{Lee2023}原论文口径一致：绝对平均误差（MAE）、中位数误差与 inlier 比例，其中 inlier 比例为相对误差 $\lvert\hat\mu_p-\mu_p\rvert/\mu_p$ 小于 $0.2\%$、$0.5\%$、$1\%$ 的像素占比，以降采样至对应网格的 NYU 深度真值为参考。全部实验均在 464 个场景的完整集合上进行。
 
 \subsection{消融实验}
 \label{sec:ablation}
@@ -153,7 +153,7 @@ L6 & L5 + 窗搜索重对齐 & \textbf{0.184} & \textbf{40.1} & \textbf{0.207} &
 \subsection{对比实验}
 \label{sec:comparison}
 
-将本文方法与四类基线在完全相同的 464 个场景、同一真值与同一评价脚本下比较：（1）Argmax，原始直方图直接取峰（无 Coates 校正与匹配滤波）；（2）Raw+MF，原始直方图经匹配滤波后取峰；（3）Coates+MF，即消融实验中的 L0；（4）CASPI~\cite{caspi}，使用官方实现与原论文参数；（5）本文方法（L6，$K=5$）。结果见表~\ref{tab:comp230}与表~\ref{tab:comp46}。
+将本文方法与四类基线在完全相同的 464 个场景、同一真值与同一评价脚本下比较：（1）Argmax，原始直方图直接取峰（无 Coates 校正与匹配滤波）；（2）Raw+MF，原始直方图经匹配滤波后取峰；（3）Coates+MF，即消融实验中的 L0；（4）CASPI~\cite{Lee2023}，使用官方实现与原论文参数；（5）本文方法（L6，$K=5$）。结果见表~\ref{tab:comp230}与表~\ref{tab:comp46}。
 
 \begin{table}[t]
 \centering

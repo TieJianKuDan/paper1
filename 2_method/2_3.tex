@@ -1,36 +1,22 @@
-\subsection{可融合性后验与贝叶斯融合权重}
-\label{sec:fusibility}
+\subsection{单目相对深度引导的局部对齐}
+\label{sec:alignment}
 
-定义二值潜变量 $z_{pq}\in\{0,1\}$：$z_{pq}=1$ 表示邻居 $q$ 可融合（对齐后可用于估计 $\mu_p$），$z_{pq}=0$ 表示不可融合（如来自不同表面或噪声巧合峰）。判断证据为 $(\Delta_{pq},\rho_{pq})$。设可融合状态下 $\Delta_{pq}\mid z_{pq}=1\sim\mathcal{N}(0,\sigma_s^2)$，不可融合状态下 $\Delta_{pq}\mid z_{pq}=0\sim\mathcal{N}(0,\sigma_d^2)$ 且 $\sigma_d>\sigma_s$，则几何似然比为
+设 $p$、$q$ 的单目深度坐标为 $b_p^M$、$b_q^M$，定义单目相对位移
 \begin{equation}
-  \Lambda_{\Delta}(\Delta_{pq})
-  =\frac{\sigma_d}{\sigma_s}
-  \exp\!\left[-\frac{\Delta_{pq}^2}{2}\Big(\frac{1}{\sigma_s^2}-\frac{1}{\sigma_d^2}\Big)\right],
-  \label{eq:lambda_delta}
+  \Delta_{pq}\triangleq b_p^M-b_q^M=(\mu_p-\mu_q)+(e_p-e_q),
+  \label{eq:delta}
 \end{equation}
-其中 $\sigma_s$、$\sigma_d$ 分别刻画同一表面内单目局部相对误差的集中程度与跨表面时含深度跳变的散布程度。$\Lambda_\Delta$ 随 $|\Delta_{pq}|$ 单调递减，构成连续的几何软门控，而非硬阈值删除。匹配证据经条件 Beta 分布参数化为似然比 $\Lambda_\rho(\rho_{pq}\mid\Delta_{pq})$（有标注数据时可直接拟合）。由 Bayes 定理，后验可融合概率为
+其中 $e_p$、$e_q$ 为单目预测误差。$\Delta_{pq}$ 承担两个作用：提供邻居直方图局部搜索中心，并作为 $p$、$q$ 是否属于同一表面的几何证据；其中只含误差之差 $e_p-e_q$，单目全局尺度误差在对齐这一步自然抵消。量化到整数 bin 得粗对齐量 $k_{pq}^{M}=\operatorname{round}(\Delta_{pq})$，以其为中心在窗口 $\mathcal{W}=\{-K,\dots,K\}$ 内对候选偏移 $\delta$ 计算归一化匹配滤波得分
 \begin{equation}
-  \gamma_{pq}
-  =\frac{\pi_{pq}\Lambda_{\Delta}\Lambda_{\rho}}
-  {(1-\pi_{pq})+\pi_{pq}\Lambda_{\Delta}\Lambda_{\rho}},
-  \label{eq:gamma}
+  \rho_{pq}(\delta)
+  =\NMF\!\big(H_p,\;H_q(b-k_{pq}^{M}-\delta)\big),
+  \label{eq:nmf}
 \end{equation}
-其中 $\pi_{pq}=\mathbb{P}(z_{pq}=1)$ 为先验可融合概率。等价地在 logit 域中两类证据可加：几何提供软门控，匹配验证实际观测支持。
-
-定义最终对齐误差 $\epsilon_{pq}\triangleq\hat k_{pq}-(\mu_p-\mu_q)$，结合式~\eqref{eq:delta}与式~\eqref{eq:final_shift}得三来源分解
+其中 $\NMF(\cdot,\cdot)$ 为归一化匹配滤波算子。取 $\hat\delta_{pq}=\argmax_{\delta\in\mathcal{W}}\rho_{pq}(\delta)$，则实际用于对齐的平移量为
 \begin{equation}
-  \epsilon_{pq}=(e_p-e_q)+r_{pq}+\hat\delta_{pq},
-  \label{eq:epsilon}
+  \hat k_{pq}=k_{pq}^{M}+\hat\delta_{pq},
+  \qquad
+  \widetilde H_{pq}(b)=H_q(b-\hat k_{pq}),
+  \label{eq:final_shift}
 \end{equation}
-其中 $r_{pq}=k_{pq}^{M}-\Delta_{pq}\in[-\tfrac12,\tfrac12]$ 为取整残差。前两项由先验与离散化决定，第三项由观测选出且与前两者一般不独立，故各方差不能直接相加，对齐方差 $\sigma_{\epsilon,pq}^2$ 由配对标注数据或重复观测估计。对齐直方图的回波中心观测为 $y_{pq}=\mu_p+\epsilon_{pq}+n_{pq}$，其中测量噪声 $n_{pq}$ 的方差 $v_q$ 由式~\eqref{eq:fisher}给出。当测量与对齐误差条件独立且对齐偏差已校准时，总有效方差为
-\begin{equation}
-  v_{pq}^{\mathrm{eff}}=v_q+\sigma_{\epsilon,pq}^{2}.
-  \label{eq:veff}
-\end{equation}
-将可融合状态建模为高斯观测 $y_{pq}\mid z_{pq}=1\sim\mathcal{N}(\mu_p,v_{pq}^{\mathrm{eff}})$，不可融合状态视为与 $\mu_p$ 无关的异常分量；对完整数据负对数似然关于 $z_{pq}$ 取后验期望（利用 $\mathbb{E}[z_{pq}\mid\Delta_{pq},\rho_{pq}]=\gamma_{pq}$），得到邻居的后验期望精度
-\begin{equation}
-  c_{pq}=\frac{\gamma_{pq}}{v_{pq}^{\mathrm{eff}}}
-  =\frac{\gamma_{pq}}{v_q+\sigma_{\epsilon,pq}^{2}},
-  \label{eq:c_pq}
-\end{equation}
-它将``是否值得融合''（$\gamma_{pq}$）与``融合后有多准确''（分母）统一到同一统计量。令归一化系数 $\alpha_{pq}=c_{pq}/\sum_{r}c_{pr}$，融合估计为 $\hat\mu_p=\sum_{q\in\mathcal{N}_p}\alpha_{pq}y_{pq}$。代入式~\eqref{eq:gamma}展开可见，理想权重呈``可靠性（$\gamma_{pq}$）$\times$ 精度（$1/v_{pq}^{\mathrm{eff}}$）''的因子结构，为工程实现给出明确的分解方向。
+其中 $\widetilde H_{pq}$ 为对齐到目标坐标系的邻居直方图；最优位置处的归一化得分记为 $\rho_{pq}=\max_\delta\rho_{pq}(\delta)\in(0,1)$。单目先验只负责将搜索限制在合理局部范围内，最终对齐位置由观测数据的匹配峰决定，$\rho_{pq}$ 记录该峰的匹配质量。

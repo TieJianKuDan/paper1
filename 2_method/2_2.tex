@@ -1,32 +1,24 @@
 \subsection{死时间畸变与 Coates 校正}
 \label{sec:coates}
 
-实际 SPAD 在一个测距周期内至多记录最早到达的一个光子，死时间使原始直方图偏离式~\eqref{eq:poisson_obs}的独立泊松模型。设逐 bin 光子到达率为 $r_p(b)$，累积率 $R_p(b)=\sum_{b'\le b}r_p(b')$，帧内有效周期数为 $M$，则原始直方图在 $b$ 处的累积计数满足精确关系 $\mathrm{cum}(b)=M\big(1-e^{-R_p(b)}\big)$，其解析逆（Coates 校正）为
+实际 SPAD 死时间使原始直方图偏离式~\eqref{eq:poisson_obs}的独立泊松模型，到达率被非线性压缩，峰形被拉向前。设帧内有效周期数为 $M$，单个测距周期内 bin $b$ 的期望光子数为 $r_p(b)$，满足 $\lambda_p(b;\mu_p)=M\,r_p(b)$；累积率 $R_p(b)=\sum_{b'\le b}r_p(b')$，则原始直方图在 $b$ 处的累积计数满足精确关系 $\mathrm{cum}(b)=M\big(1-e^{-R_p(b)}\big)$，其解析逆为 Coates 校正~\cite{Coates1968}
 \begin{equation}
   \hat r_p(b)=\ln\frac{M-\mathrm{cum}(b-1)}{M-\mathrm{cum}(b)},
   \label{eq:coates}
 \end{equation}
-其中 $\mathrm{cum}(b)=\sum_{b'\le b}H_p^{\mathrm{raw}}(b')$ 为原始直方图累积计数。该反演不含待调参数、对任意强度精确可逆：背景平坦底座反演后恢复常数率，窄峰的形状与中心位置近似保持，故校正不参与对齐量的定义，仅改变直方图取值标度与噪声结构。频率代换引入的统计误差为相对量级 $O(1/\sqrt{M})$ 的随机误差，可并入散粒噪声预算；当幸存周期数过少时反演方差失控，本文的测距窗设置使峰区自然满足可信条件。本文后续的对齐、匹配与融合均以校正后的率域直方图 $F_p(b)\triangleq\hat r_p(b)$ 为输入。
-
-\subsection{单目相对深度引导的局部对齐}
-\label{sec:alignment}
-
-设 $p$、$q$ 的单目深度坐标为 $b_p^M$、$b_q^M$，定义单目相对位移
+其中 $\mathrm{cum}(b)=\sum_{b'\le b}H_p^{\mathrm{raw}}(b')$ 为原始直方图累积计数。校正后的直方图不再服从泊松模型，第~\ref{sec:spad}节的 Fisher 信息不能直接沿用。$\mathrm{cum}(b)$ 服从参数为 $M\big(1-e^{-R_p(b)}\big)$ 的二项分布，对式~\eqref{eq:coates}作一阶误差传播，得逐 bin 方差的闭式
 \begin{equation}
-  \Delta_{pq}\triangleq b_p^M-b_q^M=(\mu_p-\mu_q)+(e_p-e_q),
-  \label{eq:delta}
+  \Var[\hat r_p(b)]=\frac{e^{R_p(b)}-e^{R_p(b-1)}}{M}.
+  \label{eq:coates_var}
 \end{equation}
-其中 $e_p$、$e_q$ 为单目预测误差。$\Delta_{pq}$ 承担两个作用：提供邻居直方图局部搜索中心，并作为 $p$、$q$ 是否属于同一表面的几何证据；其中只含误差之差 $e_p-e_q$，单目全局尺度误差在对齐这一步自然抵消。量化到整数 bin 得粗对齐量 $k_{pq}^{M}=\operatorname{round}(\Delta_{pq})$，以其为中心在窗口 $\mathcal{W}=\{-K,\dots,K\}$ 内对候选偏移 $\delta$ 计算归一化匹配滤波得分
+校正后的率域直方图记为 $F_p(b)\triangleq\hat r_p(b)$，其以 $r_p(b)$ 为模板、以式~\eqref{eq:coates_var}为逐 bin 噪声，仿照第~\ref{sec:spad}节可得 $\mu_p$ 的有效 Fisher 信息
 \begin{equation}
-  \rho_{pq}(\delta)
-  =\NMF\!\big(H_p,\;H_q(b-k_{pq}^{M}-\delta)\big),
-  \label{eq:nmf}
+  \mathcal I_p^{\mathrm{eff}}
+  =\sum_b\frac{\big(N_p h'(b-\mu_p)\big)^2}{\lambda_p(b;\mu_p)\,A_p(b)},
+  \label{eq:fisher_eff}
 \end{equation}
-其中 $\NMF(\cdot,\cdot)$ 为归一化匹配滤波算子。取 $\hat\delta_{pq}=\argmax_{\delta\in\mathcal{W}}\rho_{pq}(\delta)$，则实际用于对齐的平移量为
+其中
 \begin{equation}
-  \hat k_{pq}=k_{pq}^{M}+\hat\delta_{pq},
-  \qquad
-  \widetilde H_{pq}(b)=H_q(b-\hat k_{pq}),
-  \label{eq:final_shift}
+  A_p(b)=\frac{e^{R_p(b-1)}\big(e^{r_p(b)}-1\big)}{r_p(b)}\ge 1
 \end{equation}
-其中 $\widetilde H_{pq}$ 为对齐到目标坐标系的邻居直方图；最优位置处的归一化得分记为 $\rho_{pq}=\max_\delta\rho_{pq}(\delta)\in(0,1)$。单目先验只负责将搜索限制在合理局部范围内，最终对齐位置由观测数据的匹配峰决定，$\rho_{pq}$ 记录该峰的匹配质量。
+即理想 Fisher 信息逐 bin 被因子 $A_p(b)$ 惩罚，新的精度下界为 $v_p^{\mathrm{eff}}=1/\mathcal I_p^{\mathrm{eff}}$。堆积区中 $A_p(b)$ 随 $r_p(b)$ 上升而增大，当幸存概率 $e^{-R_p(b)}\to0$ 时趋于无穷，反演方差失控。由式~\eqref{eq:coates_var}与式~\eqref{eq:fisher_eff}，降低该误差有两条途径：其一，降低光子到达率 $r_p(b)$，使 $A_p(b)\to1$，这是消除堆积惩罚的最有效途径；其二，增大采样周期数 $M$，使得$N_p$增大。

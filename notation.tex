@@ -47,4 +47,24 @@ $\sigma_h^2$ & 高斯 IRF 的方差 & \\
 \end{tabular}
 \end{center}
 
+\section*{II.B 死时间畸变与 Coates 校正（\texttt{2\_method/2\_2.tex}）}
+
+\begin{center}
+\begin{tabular}{@{}llp{0.58\textwidth}@{}}
+\toprule
+符号 & 含义 & 备注 \\
+\midrule
+$r_p(b)$ & 单个测距周期内 bin $b$ 的期望光子数（到达率） & $\lambda_p(b;\mu_p)=M\,r_p(b)$ \\
+$R_p(b)$ & 累积率 & $R_p(b)=\sum_{b'\le b}r_p(b')$ \\
+$M$ & 每帧有效测距周期数 & 实验中 $M=1125$ \\
+$H_p^{\mathrm{raw}}(b)$ & 原始（含死时间畸变）直方图计数 & \\
+$\mathrm{cum}(b)$ & 原始直方图累积计数 & $\mathrm{cum}(b)=\sum_{b'\le b}H_p^{\mathrm{raw}}(b')$ \\
+$\hat r_p(b)$ & Coates 校正后的到达率估计 & 式：$\ln\frac{M-\mathrm{cum}(b-1)}{M-\mathrm{cum}(b)}$ \\
+$F_p(b)$ & 校正后的率域直方图 & $F_p(b)\triangleq\hat r_p(b)$；后续对齐、匹配与融合的输入 \\
+$\mathcal I_p^{\mathrm{eff}}$ & 校正后直方图的有效 Fisher 信息 & $v_p^{\mathrm{eff}}=1/\mathcal I_p^{\mathrm{eff}}$；稀疏区 $=\mathcal I_p$ \\
+$A_p(b)$ & 逐 bin 放大（惩罚）因子 & $e^{R_p(b-1)}(e^{r_p(b)}-1)/r_p(b)\ge1$；稀疏区 $\approx1$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
 \end{document}
