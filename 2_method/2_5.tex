@@ -1,31 +1,36 @@
-\subsection{可标定的工程实现}
-\label{sec:engineering}
+\subsection{可融合性概率模型}
+\label{sec:fusibility}
 
-理想权重要求 $\gamma_{pq}$、$v_q$、$\sigma_{\epsilon,pq}^2$ 在运行时逐像素获得，而单次观测中均不可直接观测；可直接计算的只有 $\Delta_{pq}$、$\hat k_{pq}$、$\rho_{pq}$。本文不为其虚构运行时估计，而是构造与理想似然比同形状的代理，全部自由参数由验证数据离线标定。可靠性因子取
+本节以可融合性概率模型作为对齐误差的代理，首先定义二值潜变量 $z_{pq}\in\{0,1\}$：$z_{pq}=1$ 表示邻居 $q$ 的直方图在对齐后可参与融合，$z_{pq}=0$ 表示不可融合。判断证据为 $(\Delta_{pq},\rho_{pq})$。同一小表面内，单目预测的偏差近似共模，差分可将其消去，$\Delta_{pq}$ 更可信，值得融合。而跨表面时偏差方向很难保证一致，误差差不相消，$\Delta_{pq}$不可信，不值得融合。设可融合状态下 $\Delta_{pq}\mid z_{pq}=1\sim\mathcal{N}(0,\sigma_s^2)$，不可融合状态下 $\Delta_{pq}\mid z_{pq}=0\sim\mathcal{N}(0,\sigma_d^2)$，且 $\sigma_s<\sigma_d$。由此得到几何似然比
 \begin{equation}
-  g_{\Delta}(\Delta_{pq})=\exp\!\Big(-\frac{\Delta_{pq}^2}{2\sigma_w^2}\Big),
-  \qquad
-  g_{\rho}(\rho_{pq})=\rho_{\mathrm{floor}}+(1-\rho_{\mathrm{floor}})\rho_{pq},
-  \label{eq:reliability}
+  \Lambda_{\Delta}(\Delta_{pq})
+  =\frac{\sigma_d}{\sigma_s}
+  \exp\!\left[-\frac{\Delta_{pq}^2}{2}\Big(\frac{1}{\sigma_s^2}-\frac{1}{\sigma_d^2}\Big)\right],
+  \label{eq:lambda_delta}
 \end{equation}
-其中 $\sigma_w$ 为几何软门控尺度，标定量级对齐单目局部相对误差（对应 $\sigma_s$）；$\rho_{\mathrm{floor}}\in[0,1)$ 为低分邻居的保底贡献，避免匹配得分偶然偏低时硬性删除仍有先验支持的邻居。精度因子保留显式代理
+它随 $|\Delta_{pq}|$ 单调递减，构成连续的几何软门控。
+
+互相关得分 $\rho_{pq}$ 的行为直接反映可融合性，即$\rho_{pq}$ 越大，可融合的后验支持越强。由于$\rho_{pq}\in[0,1]$，且在 $\Delta_{pq}$ 确定的搜索中心处取得，故其分布以 $\Delta_{pq}$ 为条件，无需二者条件独立的额外假设：设 $\rho_{pq}\mid\Delta_{pq},z_{pq}=1\sim\BetaDist\big(a_s(\Delta_{pq}),b_s(\Delta_{pq})\big)$，$\rho_{pq}\mid\Delta_{pq},z_{pq}=0\sim\BetaDist\big(a_d(\Delta_{pq}),b_d(\Delta_{pq})\big)$，由此得到互相关证据似然比
 \begin{equation}
-  \hat u_q=\frac{1}{\hat N_q+\hat N_0},
-  \qquad
-  \hat N_q=\sum_{b\in\Omega_q}\big(H_q(b)-\hat\beta_q\big),
-  \label{eq:precision_proxy}
+\begin{aligned}
+  \Lambda_{\rho}(\rho_{pq}\mid\Delta_{pq})
+  &=\frac{p(\rho_{pq}\mid\Delta_{pq},z_{pq}{=}1)}
+         {p(\rho_{pq}\mid\Delta_{pq},z_{pq}{=}0)}\\
+  &=\frac{\mathrm B(a_d,b_d)}{\mathrm B(a_s,b_s)}
+  \rho_{pq}^{\,a_s-a_d}(1-\rho_{pq})^{\,b_s-b_d},
+\end{aligned}
+\label{eq:lambda_rho}
 \end{equation}
-其中 $\hat N_q$ 为直方图峰显著度，即峰值信号窗口 $\Omega_q$ 内扣除背景估计 $\hat\beta_q$ 后的信号光子数代理，由式~\eqref{eq:v_classical}的反比关系对应理想精度因子 $1/v_q$；$\hat N_0>0$ 为正则化项，对应背景光方差下限，防止低信号邻居权重发散。三个标定参数相互耦合较弱，固定搜索窗口半宽 $K$ 与匹配算子后，在验证集上以深度误差（MAE）为目标逐一维搜索确定并冻结。最终融合权重与归一化系数为
+当 $a_s>a_d$、$b_s<b_d$，$\Lambda_{\rho}$ 随 $\rho_{pq}$ 单调递增，较大的 $\rho_{pq}$ 获得更强的可融合支持。设先验 $\pi_{pq}=\mathbb{P}(z_{pq}=1)$，由概率链式法则与 Bayes 定理，后验可融合概率为
 \begin{equation}
-  w_{pq}=g_{\Delta}(\Delta_{pq})\,g_{\rho}(\rho_{pq})\,\hat u_q,
-  \qquad
-  \alpha_{pq}=\frac{w_{pq}}{\sum_{r\in\mathcal{G}_p}w_{pr}},
-  \label{eq:weight}
+  \gamma_{pq}\triangleq\mathbb{P}(z_{pq}=1\mid\Delta_{pq},\rho_{pq})
+  =\frac{\pi_{pq}\Lambda_{\Delta}\Lambda_{\rho}}
+  {(1-\pi_{pq})+\pi_{pq}\Lambda_{\Delta}\Lambda_{\rho}}.
+  \label{eq:gamma}
 \end{equation}
-对对齐后的邻域直方图加权融合
+将 $\gamma_{pq}$ 与第~\ref{sec:error_model}节的观测模型结合，$\sigma_{\epsilon,pq}^2$ 不可获得，其对齐不确定性的作用由 $\gamma_{pq}$ 以乘性方式承担，最终精度权重为
 \begin{equation}
-  H_p^{\mathrm{fuse}}(b)
-  =\sum_{q\in\mathcal{G}_p}\alpha_{pq}\,\widetilde H_{pq}(b),
-  \label{eq:fuse}
+  c_{pq}=\frac{\gamma_{pq}}{v_q},
+  \label{eq:final_weight}
 \end{equation}
-再由融合直方图提取回波中心，得到最终深度估计 $\hat\mu_p$。当邻域内信号强度变异有限时，可将 $\hat u_q$ 置为常数，退化为仅可靠性加权。整个流程仅使用单目先验与当前 SPAD 观测即可运行，同时保留了理想贝叶斯模型的核心结构：几何一致性抑制跨表面观测，匹配一致性评价对齐可信度，信号强度压低低光子数邻居的贡献。
+可融合对以概率 $\gamma_{pq}$ 贡献测量精度 $1/v_q$，不可融合对贡献为零，期望精度即为 $\gamma_{pq}/v_q$。$\gamma_{pq}$ 高的邻居，几何与匹配证据一致支持融合，其可靠性是经过验证的；$\gamma_{pq}$ 低的邻居则质量不确定，故一律保守降权。

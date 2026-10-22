@@ -1,0 +1,31 @@
+\subsection{可标定的工程实现}
+\label{sec:engineering}
+
+理想权重 $c_{pq}=\gamma_{pq}/v_q$ 依赖的 $\gamma_{pq}$ 由第~\ref{sec:fusibility}节的概率模型从 $(\Delta_{pq},\rho_{pq})$ 计算，并作为对齐误差的保守代理；$v_q$ 依赖未知的信号光子数，以峰显著度代理。可靠性因子取
+\begin{equation}
+  g_{\Delta}(\Delta_{pq})=\exp\!\Big(-\frac{\Delta_{pq}^2}{2\sigma_w^2}\Big),
+  \qquad
+  g_{\rho}(\rho_{pq})=\rho_{\mathrm{floor}}+(1-\rho_{\mathrm{floor}})\rho_{pq},
+  \label{eq:reliability}
+\end{equation}
+其中 $\sigma_w$ 为几何软门控的尺度参数，标定量级对应 $\sigma_s$；$\rho_{\mathrm{floor}}\in[0,1)$ 为低分邻居的保底贡献，避免匹配得分偶然偏低时硬性删除仍有先验支持的邻居。精度因子取
+\begin{equation}
+  \hat u_q=\frac{1}{\hat N_q+\hat N_0},
+  \qquad
+  \hat N_q=\sum_{b\in\Omega_q}\big(H_q(b)-\hat\beta_q\big),
+  \label{eq:precision_proxy}
+\end{equation}
+其中 $\hat N_q$ 为直方图峰显著度，即峰值信号窗口 $\Omega_q$ 内扣除背景估计 $\hat\beta_q$ 后的信号光子数。$\hat u_q=1/(\hat N_q+\hat N_0)$ 使各邻居对融合直方图的贡献随其信号强度饱和（有效贡献按 $\hat N_q/(\hat N_q+\hat N_0)$ 计）：高信号直方图不支配融合结果，$\hat N_0>0$ 防止零信号邻居的权重发散。三个标定参数相互耦合较弱，固定搜索窗口半宽 $K$ 与匹配算子后，在验证集上以深度误差（MAE）为目标逐一维搜索确定并冻结。最终融合权重与归一化系数为
+\begin{equation}
+  w_{pq}=g_{\Delta}(\Delta_{pq})\,g_{\rho}(\rho_{pq})\,\hat u_q,
+  \qquad
+  \alpha_{pq}=\frac{w_{pq}}{\sum_{r\in\mathcal{G}_p}w_{pr}},
+  \label{eq:weight}
+\end{equation}
+对对齐后的邻域直方图加权融合
+\begin{equation}
+  F_p^{\mathrm{fuse}}(b)
+  =\sum_{q\in\mathcal{G}_p}\alpha_{pq}\,\widetilde F_{pq}(b),
+  \label{eq:fuse}
+\end{equation}
+再由融合直方图提取回波中心，得到最终深度估计 $\hat\mu_p$。当邻域内信号强度变异有限时，可将 $\hat u_q$ 置为常数，退化为仅可靠性加权。整个流程仅使用单目先验与当前 SPAD 观测即可运行，同时保留了理想贝叶斯模型的核心结构：几何一致性抑制跨表面观测，匹配一致性评价对齐可信度，幅度均衡避免直方图计数差异支配融合结果。

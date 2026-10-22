@@ -32,7 +32,7 @@ $b$ & 直方图的离散 bin 坐标 & 每 bin 宽 $66.9\,\mathrm{ps}$，对应 $
 $H_p(b)$ & 像素 $p$ 的直方图在 bin $b$ 的光子计数 & 随机变量 \\
 $\lambda_p(b;\mu_p)$ & $H_p(b)$ 的期望（泊松参数） & $N_p h(b-\mu_p)+\beta_p$ \\
 $\mu_p$ & 像素 $p$ 的真实回波中心坐标 & 待估参数 \\
-$N_p$ & 像素 $p$ 的期望信号光子数 & \\
+$N_p$ & 像素 $p$ 的期望信号光子数 & 勿与邻域 $\mathcal{G}_p$（II.C）混淆 \\
 $h(\cdot)$ & 归一化系统脉冲响应（IRF） & $\sum_b h(b-\mu_p)=1$ \\
 $\beta_p$ & 每 bin 平均背景光子与暗计数 & 平坦背景假设下为常数 \\
 $\beta_p(b)$ & 随 bin 变化的背景计数 & 背景非平坦时的推广形式 \\
@@ -85,21 +85,61 @@ $\widetilde F_{pq}(b)$ & 对齐到目标坐标系的邻居直方图 & $\widetild
 \end{tabular}
 \end{center}
 
-\section*{II.D 可融合性概率模型（\texttt{2\_method/2\_4.tex}）}
+\section*{II.D 融合误差与最优融合权重（\texttt{2\_method/2\_4.tex}）}
 
 \begin{center}
 \begin{tabular}{@{}llp{0.58\textwidth}@{}}
 \toprule
 符号 & 含义 & 备注 \\
 \midrule
-$z_{pq}$ & 二值潜变量：$q$ 与 $p$ 深度相近、可融合 & $z_{pq}=1$ 可融合，$z_{pq}=0$ 不可融合 \\
+$\epsilon_{pq}$ & 最终对齐误差 & $\hat k_{pq}-(\mu_p-\mu_q)=(e_p-e_q)+r_{pq}+\hat\delta_{pq}$；真实存在且不可忽略 \\
+$r_{pq}$ & 取整残差 & $k_{pq}^{M}-\Delta_{pq}\in[-\tfrac12,\tfrac12]$ \\
+$y_{pq}$ & 邻居回波中心观测 & $y_{pq}=\mu_p+\epsilon_{pq}+n_{pq}$，从 $\widetilde F_{pq}$ 提取 \\
+$n_{pq}$ & 直方图回波中心测量误差 & \\
+$v_q$ & 邻居 $q$ 的测量方差 & 2\_1 中 Fisher 信息的倒数 \\
+$\sigma_{\epsilon,pq}^2$ & 对齐方差 & 由配对标注数据或重复观测整体估计；运行时不可逐对获得 \\
+$v_{pq}^{\mathrm{eff}}$ & 单邻居总不确定度 & $v_q+\sigma_{\epsilon,pq}^2$（条件独立+偏差校准） \\
+$c_{pq}$ & 逆方差权重 & $1/v_{pq}^{\mathrm{eff}}$（总不确定度逐对已知时的最优权重） \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section*{II.E 可融合性概率模型（\texttt{2\_method/2\_5.tex}）}
+
+\begin{center}
+\begin{tabular}{@{}llp{0.58\textwidth}@{}}
+\toprule
+符号 & 含义 & 备注 \\
+\midrule
+$z_{pq}$ & 二值潜变量：对齐后可参与融合 & $z_{pq}=1$ 可融合，$z_{pq}=0$ 不可融合 \\
 $\sigma_s$ & 可融合状态下 $\Delta_{pq}$ 的散布 & 并入表面内真实深度起伏与单目误差之差 \\
 $\sigma_d$ & 不可融合状态下 $\Delta_{pq}$ 的散布 & 含跨表面深度跳变；$\sigma_d>\sigma_s$ \\
 $\Lambda_{\Delta}$ & 几何似然比 & 随 $|\Delta_{pq}|$ 单调递减的软门控 \\
-$\Lambda_{\rho}$ & 匹配证据似然比 & 幂式随 $\rho$ 单调递增（$a_s>a_d$、$b_s<b_d$ 时） \\
-$a_s,b_s,a_d,b_d$ & 条件 Beta 分布参数 & 可依赖 $\Delta_{pq}$；由标注数据拟合 \\
+$\Lambda_{\rho}$ & 互相关证据似然比 & 幂式随 $\rho$ 单调递增（$a_s>a_d$、$b_s<b_d$ 时） \\
+$a_s,b_s,a_d,b_d$ & 条件 Beta 分布参数 & 可依赖 $\Delta_{pq}$ \\
 $\pi_{pq}$ & 先验可融合概率 & $\pi_{pq}=\mathbb{P}(z_{pq}=1)$ \\
 $\gamma_{pq}$ & 后验可融合概率 & $\gamma_{pq}=\mathbb{P}(z_{pq}=1\mid\Delta_{pq},\rho_{pq})$ \\
+$c_{pq}$ & 最终精度权重 & $\gamma_{pq}/v_{pq}^{\mathrm{eff}}$；$\gamma$ 为对齐误差的保守代理 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section*{II.F 可标定的工程实现（\texttt{2\_method/2\_6.tex}）}
+
+\begin{center}
+\begin{tabular}{@{}llp{0.58\textwidth}@{}}
+\toprule
+符号 & 含义 & 备注 \\
+\midrule
+$g_{\Delta},g_{\rho}$ & 可靠性因子（几何门/匹配门） & 与 $\Lambda_\Delta$、$\Lambda_\rho$ 同形状的代理 \\
+$\sigma_w$ & 几何软门控尺度 & 对齐误差代理的标定量级（对应 $\sigma_s$） \\
+$\rho_{\mathrm{floor}}$ & 匹配得分保底贡献 & $\in[0,1)$ \\
+$\hat u_q$ & 精度因子（幅度均衡） & $1/(\hat N_q+\hat N_0)$；有效贡献按 $\hat N_q/(\hat N_q+\hat N_0)$ 饱和，$\hat N_q$ 在 Coates 前原始计数上计算 \\
+$\hat N_0$ & 防发散正则化项 & $\hat N_q\to0$ 时防止权重发散 \\
+$\Omega_q$ & 峰值信号窗口 & 以峰为中心、半径 $\lceil4\sigma_h\rceil$ 的循环窗 \\
+$\hat\beta_q$ & 背景估计 & 直方图 $20\%$ 分位 \\
+$w_{pq}$ & 工程融合权重 & $g_\Delta g_\rho \hat u_q$ \\
+$F_p^{\mathrm{fuse}}(b)$ & 融合直方图 & $\sum_{q\in\mathcal{G}_p}\alpha_{pq}\widetilde F_{pq}(b)$，取峰得 $\hat\mu_p$ \\
 \bottomrule
 \end{tabular}
 \end{center}
