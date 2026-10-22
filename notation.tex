@@ -67,4 +67,22 @@ $A_p(b)$ & 逐 bin 放大（惩罚）因子 & $e^{R_p(b-1)}(e^{r_p(b)}-1)/r_p(b)
 \end{tabular}
 \end{center}
 
+\section*{II.C 单目相对深度引导的局部对齐（\texttt{2\_method/2\_3.tex}）}
+
+\begin{center}
+\begin{tabular}{@{}llp{0.58\textwidth}@{}}
+\toprule
+符号 & 含义 & 备注 \\
+\midrule
+$\mathcal{G}_p$ & 像素 $p$ 的邻域（邻居集合） & 原记 $\mathcal{N}_p$，为避免与 $N_p$ 及高斯分布 $\mathcal{N}$ 混淆改名 \\
+$b_p^M$ & 像素 $p$ 的单目深度坐标（bin 域） & 单目相对深度经逐场景最小二乘标定映射到 bin 域 \\
+$e_p$ & 单目预测误差 & $b_p^M=\mu_p+e_p$ \\
+$\Delta_{pq}$ & 单目相对位移 & $\Delta_{pq}=b_p^M-b_q^M=(\mu_p-\mu_q)+(e_p-e_q)$ \\
+$k_{pq}^{M}$ & 粗对齐量（搜索中心） & $k_{pq}^{M}=\operatorname{round}(\Delta_{pq})$ \\
+$\rho_{pq}(\delta)$ & 归一化（循环）互相关匹配得分 & $\in[0,1]$；在 $F_p$ 与平移后的 $F_q$ 之间计算 \\
+$\widetilde F_{pq}(b)$ & 对齐到目标坐标系的邻居直方图 & $\widetilde F_{pq}(b)=F_q(b-\hat k_{pq})$；$\hat k_{pq}=k_{pq}^{M}+\hat\delta_{pq}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
 \end{document}

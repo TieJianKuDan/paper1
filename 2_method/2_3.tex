@@ -1,22 +1,23 @@
 \subsection{单目相对深度引导的局部对齐}
 \label{sec:alignment}
 
-设 $p$、$q$ 的单目深度坐标为 $b_p^M$、$b_q^M$，定义单目相对位移
+设 $p$ 为目标像素，$q$ 为其邻域 $\mathcal{G}_p$ 中的邻居，两者的校正后率域直方图分别为 $F_p$、$F_q$。单目预测可写为 $b_p^M=\mu_p+e_p$、$b_q^M=\mu_q+e_q$，其中 $b_p^M$、$b_q^M$ 为经逐场景最小二乘标定映射到 bin 域的单目深度坐标，$e_p$、$e_q$ 为单目预测误差。定义单目相对位移
 \begin{equation}
-  \Delta_{pq}\triangleq b_p^M-b_q^M=(\mu_p-\mu_q)+(e_p-e_q),
+  \Delta_{pq}\triangleq b_p^M-b_q^M=(\mu_p-\mu_q)+(e_p-e_q).
   \label{eq:delta}
 \end{equation}
-其中 $e_p$、$e_q$ 为单目预测误差。$\Delta_{pq}$ 承担两个作用：提供邻居直方图局部搜索中心，并作为 $p$、$q$ 是否属于同一表面的几何证据；其中只含误差之差 $e_p-e_q$，单目全局尺度误差在对齐这一步自然抵消。量化到整数 bin 得粗对齐量 $k_{pq}^{M}=\operatorname{round}(\Delta_{pq})$，以其为中心在窗口 $\mathcal{W}=\{-K,\dots,K\}$ 内对候选偏移 $\delta$ 计算归一化匹配滤波得分
+$p$、$q$ 共有的平移偏差在差分中自动消去，故对齐仅依赖单目的局部相对精度。量化到整数 bin 得粗对齐量 $k_{pq}^{M}=\operatorname{round}(\Delta_{pq})$，以其为中心在窗口 $\mathcal{W}=\{-K,\dots,K\}$ 内测试候选偏移 $\delta$。对每个候选偏移计算归一化互相关得分
 \begin{equation}
   \rho_{pq}(\delta)
-  =\NMF\!\big(H_p,\;H_q(b-k_{pq}^{M}-\delta)\big),
+  =\frac{\big\langle F_p,\;T_{k_{pq}^{M}+\delta}\,F_q\big\rangle}
+         {\big\|F_p\big\|\,\big\|F_q\big\|}\in[0,1],
   \label{eq:nmf}
 \end{equation}
-其中 $\NMF(\cdot,\cdot)$ 为归一化匹配滤波算子。取 $\hat\delta_{pq}=\argmax_{\delta\in\mathcal{W}}\rho_{pq}(\delta)$，则实际用于对齐的平移量为
+其中 $T_{k}$ 为循环平移算子，$\langle\cdot,\cdot\rangle$ 与 $\|\cdot\|$ 为逐 bin 内积与范数。取 $\hat\delta_{pq}=\argmax_{\delta\in\mathcal{W}}\rho_{pq}(\delta)$，则实际用于对齐的平移量为
 \begin{equation}
   \hat k_{pq}=k_{pq}^{M}+\hat\delta_{pq},
   \qquad
-  \widetilde H_{pq}(b)=H_q(b-\hat k_{pq}),
+  \widetilde F_{pq}(b)=F_q(b-\hat k_{pq}),
   \label{eq:final_shift}
 \end{equation}
-其中 $\widetilde H_{pq}$ 为对齐到目标坐标系的邻居直方图；最优位置处的归一化得分记为 $\rho_{pq}=\max_\delta\rho_{pq}(\delta)\in(0,1)$。单目先验只负责将搜索限制在合理局部范围内，最终对齐位置由观测数据的匹配峰决定，$\rho_{pq}$ 记录该峰的匹配质量。
+其中 $\widetilde F_{pq}$ 为对齐到目标坐标系的邻居直方图。最优位置处的得分记为 $\rho_{pq}=\max_\delta\rho_{pq}(\delta)$。单目先验只负责将搜索限制在合理局部范围内，最终对齐位置由观测数据的匹配峰决定，$\rho_{pq}$ 记录该峰的匹配质量，将在第~\ref{sec:fusibility}节中作为匹配证据参与可融合性判断。
