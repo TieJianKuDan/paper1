@@ -96,10 +96,11 @@ $\epsilon_{pq}$ & 最终对齐误差 & $\hat k_{pq}-(\mu_p-\mu_q)=(e_p-e_q)+r_{p
 $r_{pq}$ & 取整残差 & $k_{pq}^{M}-\Delta_{pq}\in[-\tfrac12,\tfrac12]$ \\
 $y_{pq}$ & 邻居回波中心观测 & $y_{pq}=\mu_p+\epsilon_{pq}+n_{pq}$，从 $\widetilde F_{pq}$ 提取 \\
 $n_{pq}$ & 直方图回波中心测量误差 & \\
-$v_q$ & 邻居 $q$ 的测量方差 & 2\_1 中 Fisher 信息的倒数 \\
+$v_q$ & 邻居 $q$ 的测量方差 & 校正域逐 bin 噪声（式 coates\_var）的传播结果；稀疏区退化为 $1/\mathcal I_p$ \\
 $\sigma_{\epsilon,pq}^2$ & 对齐方差 & 由配对标注数据或重复观测整体估计；运行时不可逐对获得 \\
 $v_{pq}^{\mathrm{eff}}$ & 单邻居总不确定度 & $v_q+\sigma_{\epsilon,pq}^2$（条件独立+偏差校准） \\
 $c_{pq}$ & 逆方差权重 & $1/v_{pq}^{\mathrm{eff}}$（总不确定度逐对已知时的最优权重） \\
+$\alpha_{pq}$ & 归一化融合系数 & $c_{pq}/\sum_r c_{pr}$；权重仅定义到公共常数因子；2\_6 的工程系数 $\alpha=w/\sum w$ 与之同构 \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -119,7 +120,7 @@ $\Lambda_{\rho}$ & 互相关证据似然比 & 幂式随 $\rho$ 单调递增（$a
 $a_s,b_s,a_d,b_d$ & 条件 Beta 分布参数 & 可依赖 $\Delta_{pq}$ \\
 $\pi_{pq}$ & 先验可融合概率 & $\pi_{pq}=\mathbb{P}(z_{pq}=1)$ \\
 $\gamma_{pq}$ & 后验可融合概率 & $\gamma_{pq}=\mathbb{P}(z_{pq}=1\mid\Delta_{pq},\rho_{pq})$ \\
-$c_{pq}$ & 最终精度权重 & $\gamma_{pq}/v_{pq}^{\mathrm{eff}}$；$\gamma$ 为对齐误差的保守代理 \\
+$c_{pq}$ & 最终精度权重 & $\gamma_{pq}/v_q$；可融合对以概率 $\gamma$ 贡献 $1/v_q$，$\gamma$ 为对齐可靠性的保守代理 \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -131,10 +132,10 @@ $c_{pq}$ & 最终精度权重 & $\gamma_{pq}/v_{pq}^{\mathrm{eff}}$；$\gamma$ �
 \toprule
 符号 & 含义 & 备注 \\
 \midrule
-$g_{\Delta},g_{\rho}$ & 可靠性因子（几何门/匹配门） & 与 $\Lambda_\Delta$、$\Lambda_\rho$ 同形状的代理 \\
-$\sigma_w$ & 几何软门控尺度 & 对齐误差代理的标定量级（对应 $\sigma_s$） \\
+$g_{\Delta},g_{\rho}$ & 可靠性因子（几何门/匹配门） & $\gamma_{pq}$ 的行为代理：$g_\Delta$ 与 $\Lambda_\Delta$ 同形状，$g_\rho$ 保留 $\Lambda_\rho$ 单调走向的线性形式 \\
+$\sigma_w$ & 几何软门控尺度 & 承担 $\sigma_s$ 的角色 \\
 $\rho_{\mathrm{floor}}$ & 匹配得分保底贡献 & $\in[0,1)$ \\
-$\hat u_q$ & 精度因子（幅度均衡） & $1/(\hat N_q+\hat N_0)$；有效贡献按 $\hat N_q/(\hat N_q+\hat N_0)$ 饱和，$\hat N_q$ 在 Coates 前原始计数上计算 \\
+$\hat u_q$ & 幅度均衡因子 & $1/(\hat N_q+\hat N_0)$；非 $1/v_q$ 的形状代理——理想精度加权作用于中心估计，直方图域转为均衡（贡献按 $\hat N_q/(\hat N_q+\hat N_0)$ 饱和）；$\hat N_q$ 在 Coates 前原始计数上计算 \\
 $\hat N_0$ & 防发散正则化项 & $\hat N_q\to0$ 时防止权重发散 \\
 $\Omega_q$ & 峰值信号窗口 & 以峰为中心、半径 $\lceil4\sigma_h\rceil$ 的循环窗 \\
 $\hat\beta_q$ & 背景估计 & 直方图 $20\%$ 分位 \\
