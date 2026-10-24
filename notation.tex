@@ -120,7 +120,8 @@ $\Lambda_{\rho}$ & 互相关证据似然比 & 幂式随 $\rho$ 单调递增（$a
 $a_s,b_s,a_d,b_d$ & 条件 Beta 分布参数 & 可依赖 $\Delta_{pq}$ \\
 $\pi_{pq}$ & 先验可融合概率 & $\pi_{pq}=\mathbb{P}(z_{pq}=1)$ \\
 $\gamma_{pq}$ & 后验可融合概率 & $\gamma_{pq}=\mathbb{P}(z_{pq}=1\mid\Delta_{pq},\rho_{pq})$ \\
-$c_{pq}$ & 最终精度权重 & $\gamma_{pq}/v_q$；可融合对以概率 $\gamma$ 贡献 $1/v_q$，$\gamma$ 为对齐可靠性的保守代理 \\
+$c_{pq}$ & 最终精度权重 & $\gamma_{pq}/(v_q+\sigma_\epsilon^2)$；$\sigma_\epsilon$ 为对齐残差平均强度（可标定），$\gamma$ 为逐对证据甄别的保守代理 \\
+$\sigma_\epsilon$ & 对齐残差的平均强度 & 单一标定常数；2\_6 中 $\hat N_0=\sigma_h^2/\sigma_\epsilon^2$ \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -135,11 +136,11 @@ $c_{pq}$ & 最终精度权重 & $\gamma_{pq}/v_q$；可融合对以概率 $\gamm
 $g_{\Delta},g_{\rho}$ & 可靠性因子（几何门/匹配门） & $\gamma_{pq}$ 的行为代理：$g_\Delta$ 与 $\Lambda_\Delta$ 同形状，$g_\rho$ 保留 $\Lambda_\rho$ 单调走向的线性形式 \\
 $\sigma_w$ & 几何软门控尺度 & 承担 $\sigma_s$ 的角色 \\
 $\rho_{\mathrm{floor}}$ & 匹配得分保底贡献 & $\in[0,1)$ \\
-$\hat u_q$ & 对齐响应因子（对齐误差的平均统计响应） & $1/(\hat N_q+\hat N_0)$，$\hat N_0=\sigma_h^2/\sigma_\epsilon^2$；有效位置权重 $W_q=\hat u_q\hat N_q$ 饱和；$\hat N_q$ 在 Coates 前原始计数上计算 \\
+$\hat N_q$ & 直方图峰显著度 & 峰值信号窗口 $\Omega_q$ 内扣背景计数之和；信号强度的估计 \\
 $\hat N_0$ & 对齐残差强度的标定量纲 & $\sigma_h^2/\sigma_\epsilon^2$：计数方差与对齐方差相等的光子数；$\hat N_q\to0$ 时防权重发散 \\
 $\Omega_q$ & 峰值信号窗口 & 以峰为中心、半径 $\lceil4\sigma_h\rceil$ 的循环窗 \\
 $\hat\beta_q$ & 背景估计 & 直方图 $20\%$ 分位 \\
-$w_{pq}$ & 工程融合权重 & $g_\Delta g_\rho \hat u_q$ \\
+$w_{pq}$ & 工程融合权重 & $g_\Delta g_\rho/(\hat N_q+\hat N_0)$ \\
 $F_p^{\mathrm{fuse}}(b)$ & 融合直方图 & $\sum_{q\in\mathcal{G}_p}\alpha_{pq}\widetilde F_{pq}(b)$，取峰得 $\hat\mu_p$ \\
 \bottomrule
 \end{tabular}

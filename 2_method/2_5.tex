@@ -1,7 +1,7 @@
 \subsection{可融合性概率模型}
 \label{sec:fusibility}
 
-本节以可融合性概率模型作为对齐误差的代理，首先定义二值潜变量 $z_{pq}\in\{0,1\}$：$z_{pq}=1$ 表示邻居 $q$ 的直方图在对齐后可参与融合，$z_{pq}=0$ 表示不可融合。判断证据为 $(\Delta_{pq},\rho_{pq})$。同一小表面内，单目预测的偏差近似共模，差分可将其消去，$\Delta_{pq}$ 更可信，值得融合。而跨表面时偏差方向很难保证一致，误差差不相消，$\Delta_{pq}$不可信，不值得融合。设可融合状态下 $\Delta_{pq}\mid z_{pq}=1\sim\mathcal{N}(0,\sigma_s^2)$，不可融合状态下 $\Delta_{pq}\mid z_{pq}=0\sim\mathcal{N}(0,\sigma_d^2)$，且 $\sigma_s<\sigma_d$。由此得到几何似然比
+本节以可融合性概率模型作为逐对直方图对齐误差的代理，首先定义二值潜变量 $z_{pq}\in\{0,1\}$：$z_{pq}=1$ 表示邻居 $q$ 的直方图在对齐后可参与融合，$z_{pq}=0$ 表示不可融合。判断证据为 $(\Delta_{pq},\rho_{pq})$。同一小表面内，单目预测的偏差近似共模，差分可将其消去，$\Delta_{pq}$ 更可信，值得融合。而跨表面时偏差方向很难保证一致，误差差不相消，$\Delta_{pq}$不可信，不值得融合。设可融合状态下 $\Delta_{pq}\mid z_{pq}=1\sim\mathcal{N}(0,\sigma_s^2)$，不可融合状态下 $\Delta_{pq}\mid z_{pq}=0\sim\mathcal{N}(0,\sigma_d^2)$，且 $\sigma_s<\sigma_d$。由此得到几何似然比
 \begin{equation}
   \Lambda_{\Delta}(\Delta_{pq})
   =\frac{\sigma_d}{\sigma_s}
@@ -29,9 +29,9 @@
   \label{eq:gamma}
 \end{equation}
 等价地在 logit 域中 $\logit(\gamma_{pq})=\logit(\pi_{pq})+\log\Lambda_{\Delta}+\log\Lambda_{\rho}$，两类证据以可加方式共同更新后验：几何证据提供软门控，互相关证据验证观测支持。
-将 $\gamma_{pq}$ 与第~\ref{sec:error_model}节的观测模型结合，$\sigma_{\epsilon,pq}^2$ 不可获得，其对齐不确定性的作用由 $\gamma_{pq}$ 以乘性方式承担，最终精度权重为
+将 $\gamma_{pq}$ 与第~\ref{sec:error_model}节的最优位置权重结合。首先用平均强度 $\sigma_\epsilon$ 替换 $\sigma_{\epsilon,pq}^2$。至于逐对的不确定度，$\gamma_{pq}$ 以乘性方式承担。最终精度权重为
 \begin{equation}
-  c_{pq}=\frac{\gamma_{pq}}{v_q},
+  c_{pq}=\frac{\gamma_{pq}}{v_q + \sigma_\epsilon^{2}},
   \label{eq:final_weight}
 \end{equation}
-可融合对以概率 $\gamma_{pq}$ 贡献测量精度 $1/v_q$，不可融合对贡献为零，期望精度即为 $\gamma_{pq}/v_q$。$\gamma_{pq}$ 高的邻居，几何与匹配证据一致支持融合，其可靠性是经过验证的；$\gamma_{pq}$ 低的邻居则质量不确定，故一律保守降权。
+可融合对以概率 $\gamma_{pq}$ 贡献精度 $1/(v_q+\sigma_\epsilon^2)$，不可融合对贡献为零。$\gamma_{pq}$ 高的邻居，几何与匹配证据一致支持融合，其可靠性是经过验证的；$\gamma_{pq}$ 低的邻居则质量不确定，故一律保守降权。
