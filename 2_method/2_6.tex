@@ -13,15 +13,15 @@
 对于$1/(v_q + \sigma_\epsilon^{2})$，$v_q$取式~\eqref{eq:v_classical}的形式，并除掉直方图自身携带的 $\hat N_q$ 倍幅度，得到：
 \begin{equation}
   \frac{1}{\hat N_q\,\big(v_q+\sigma_\epsilon^2\big)}
-  \;\propto\;\frac{1}{\sigma_h^2+\sigma_\epsilon^2\,\hat N_q}
-  = \frac{1}{\hat N_q+\hat N_0},
+  =\frac{1}{\sigma_h^2+\sigma_\epsilon^2\,\hat N_q}
+  \;\propto\;\frac{1}{\hat N_q+\hat N_0},
   \label{eq:precision_proxy}
 \end{equation}
 其中
 \begin{equation}
   \hat N_0\;\triangleq\;\frac{\sigma_h^2}{\sigma_\epsilon^2},
 \end{equation}
-其中 $\hat N_q$ 为直方图峰显著度，即峰值信号窗口 $\Omega_q$ 内扣除背景估计 $\hat\beta_q$ 后的信号光子数。$\hat N_0$ 是计数方差与对齐方差相等的光子数：$\hat N_q\ll\hat N_0$ 时计数受限，贡献随信号强度近线性增长；$\hat N_q\gg\hat N_0$ 时对齐受限，多余光子不改善被对齐误差封顶的精度上限，贡献封顶、系数反比下降，高信号直方图不支配融合结果；$\hat N_0>0$ 同时防止零信号邻居的权重发散。三个标定参数相互耦合较弱，固定搜索窗口半宽 $K$ 与匹配算子后，在验证集上以深度误差为目标逐一维搜索确定并冻结。最终融合权重与归一化系数为
+而 $\hat N_q$ 为直方图峰显著度，即峰值信号窗口 $\Omega_q$ 内扣除背景估计 $\hat\beta_q$ 后的信号光子数。$\hat N_0$ 是使计数方差 $v_q=\sigma_h^2/\hat N_q$ 与对齐方差 $\sigma_\epsilon^2$ 相等的信号光子数。$\hat N_q\ll\hat N_0$ 时计数方差主导，贡献随信号强度近线性增长；$\hat N_q\gg\hat N_0$ 时对齐方差主导，位置精度不再随光子数提升，贡献趋于饱和、系数反比下降，高信号直方图因而不支配融合结果。$\hat N_0>0$ 同时保证零信号邻居的权重不发散。三个标定参数相互耦合较弱，固定搜索窗口半宽 $K$ 与匹配算子后，在验证集上以深度误差为目标逐一维搜索确定并冻结。最终融合权重与归一化系数为
 \begin{equation}
   w_{pq}=\frac{g_{\Delta}(\Delta_{pq})\,g_{\rho}(\rho_{pq})}{\hat N_q+\hat N_0},
   \qquad
