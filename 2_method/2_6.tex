@@ -4,18 +4,26 @@
 理想权重 $c_{pq}=\gamma_{pq}/v_q$ 的两个因子在运行时都不可直接获得：$\gamma_{pq}$ 的后验构造依赖一组缺乏直接估计途径的分布参数，$v_q$ 依赖未知的信号光子数。本节给出两个因子的可标定工程形式，保持权重的乘性结构不变。可靠性因子代理 $\gamma_{pq}$：不显式构造后验，而以核函数直接参数化，
 \begin{equation}
   g_{\Delta}(\Delta_{pq})=\exp\!\Big(-\frac{\Delta_{pq}^2}{2\sigma_w^2}\Big),
-  \quad
+  \;
   g_{\rho}(\rho_{pq})=\rho_{\mathrm{floor}}+(1-\rho_{\mathrm{floor}})\rho_{pq},
   \label{eq:reliability}
 \end{equation}
-其中 $g_{\Delta}$ 与几何似然比 $\Lambda_{\Delta}$ 同为高斯形状，随 $|\Delta_{pq}|$ 单调递减，尺度参数 $\sigma_w$ 承担 $\sigma_s$ 的角色；$g_{\rho}$ 为线性函数，保留互相关证据似然比``$\rho_{pq}$ 越大支持越强''的单调走向，$\rho_{\mathrm{floor}}\in[0,1)$ 为低分邻居的保底贡献，避免匹配得分偶然偏低时硬性删除仍有先验支持的邻居。归一化系数会吸收常数因子，代理只需复现理想权重的单调行为而无需保留概率语义，参数由此可在验证集上直接标定。幅度因子方面，理想的精度加权作用于$\hat\mu_p$，而对于直方图加权融合，直方图幅度已随信号光子数增长，按精度加权会把信号强度计入两次，故该因子在直方图域以幅度均衡的形式出现，
+其中 $g_{\Delta}$ 与几何似然比 $\Lambda_{\Delta}$ 同为高斯形状，随 $|\Delta_{pq}|$ 单调递减，尺度参数 $\sigma_w$ 承担 $\sigma_s$ 的角色；$g_{\rho}$ 为线性函数，保留互相关证据似然比``$\rho_{pq}$ 越大支持越强''的单调走向，$\rho_{\mathrm{floor}}\in[0,1)$ 为低分邻居的保底贡献，避免匹配得分偶然偏低时将仍有先验支持的邻居完全排除。归一化系数会吸收常数因子，代理只需复现理想权重的单调行为而无需保留概率语义，参数由此可在验证集上直接标定。此外，本节增加系数 $\hat u_q$ 反映对齐误差的平均统计响应。逐对的 $\sigma_{\epsilon,pq}$ 不可得，其平均强度 $\sigma_\epsilon$ 却可作为单一常数标定。最优位置权重的对齐方差取该平均强度，方差取表达式\ref{eq:v_classical}的形式。各邻居对融合直方图的贡献为系数与幅度之积 $\hat u_q\hat N_q$，令其正比于最优位置权重：
+\begin{equation}
+  \hat u_q\;\propto\;\frac{1}{\hat N_q\,\big(v_q+\sigma_\epsilon^2\big)}
+  =\frac{1}{\sigma_h^2+\sigma_\epsilon^2\hat N_q}
+  =\frac{1}{\sigma_\epsilon^2}\cdot\frac{1}{\hat N_q+\sigma_h^2/\sigma_\epsilon^2},
+\end{equation}
+常数 $1/\sigma_\epsilon^2$ 被归一化吸收：
 \begin{equation}
   \hat u_q=\frac{1}{\hat N_q+\hat N_0},
+  \quad
+  \hat N_0\;\triangleq\;\frac{\sigma_h^2}{\sigma_\epsilon^2},
   \quad
   \hat N_q=\sum_{b\in\Omega_q}\big(H_q(b)-\hat\beta_q\big),
   \label{eq:precision_proxy}
 \end{equation}
-其中 $\hat N_q$ 为直方图峰显著度，即峰值信号窗口 $\Omega_q$ 内扣除背景估计 $\hat\beta_q$ 后的信号光子数。$\hat u_q=1/(\hat N_q+\hat N_0)$ 使各邻居对融合直方图的贡献随其信号强度饱和：高信号直方图不支配融合结果，$\hat N_0>0$ 防止零信号邻居的权重发散。三个标定参数相互耦合较弱，固定搜索窗口半宽 $K$ 与匹配算子后，在验证集上以深度误差为目标逐一维搜索确定并冻结。最终融合权重与归一化系数为
+其中 $\hat N_q$ 为直方图峰显著度，即峰值信号窗口 $\Omega_q$ 内扣除背景估计 $\hat\beta_q$ 后的信号光子数。$\hat N_0$ 是计数方差与对齐方差相等的光子数：$\hat N_q\ll\hat N_0$ 时计数受限，贡献随信号强度近线性增长；$\hat N_q\gg\hat N_0$ 时对齐受限——多余光子不改善被 $\sigma_\epsilon$ 封顶的位置知识，贡献封顶、系数反比下降，高信号直方图不支配融合结果；$\hat N_0>0$ 同时防止零信号邻居的权重发散。三个标定参数相互耦合较弱，固定搜索窗口半宽 $K$ 与匹配算子后，在验证集上以深度误差为目标逐一维搜索确定并冻结。最终融合权重与归一化系数为
 \begin{equation}
   w_{pq}=g_{\Delta}(\Delta_{pq})\,g_{\rho}(\rho_{pq})\,\hat u_q,
   \qquad
@@ -28,4 +36,4 @@
   =\sum_{q\in\mathcal{G}_p}\alpha_{pq}\,\widetilde F_{pq}(b),
   \label{eq:fuse}
 \end{equation}
-再由融合直方图提取回波中心，得到最终深度估计 $\hat\mu_p$。当邻域内信号强度变异有限时，可将 $\hat u_q$ 置为常数，退化为仅可靠性加权。整个流程仅使用单目先验与当前 SPAD 观测即可运行，同时保留了理想贝叶斯模型的核心结构。
+再由融合直方图提取回波中心，得到最终深度估计 $\hat\mu_p$。整个流程仅使用单目先验与当前 SPAD 观测即可运行，同时保留了理想贝叶斯模型的核心结构。
