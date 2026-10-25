@@ -1,12 +1,12 @@
 \subsection{死时间畸变与 Coates 校正}
 \label{sec:coates}
 
-实际 SPAD 死时间使原始直方图偏离式~\eqref{eq:poisson_obs}的独立泊松模型，到达率被非线性压缩，峰形被拉向前。设帧内有效周期数为 $M$，单个测距周期内 bin $b$ 的期望光子数为 $r_p(b)$，满足 $\lambda_p(b;\mu_p)=M\,r_p(b)$；累积率 $R_p(b)=\sum_{b'\le b}r_p(b')$，则原始直方图在 $b$ 处的累积计数满足精确关系 $\mathrm{cum}(b)=M\big(1-e^{-R_p(b)}\big)$，其解析逆为 Coates 校正~\cite{Coates1968}
+实际 SPAD 死时间使原始直方图偏离式~\eqref{eq:poisson_obs}的独立泊松模型，到达率被非线性压缩，峰形被拉向前。设帧内周期数为 $M$，单个测距周期内 bin $b$ 的期望光子数为 $r_p(b)$，满足 $\lambda_p(b;\mu_p)=M\,r_p(b)$；累积率 $R_p(b)=\sum_{b'\le b}r_p(b')$。记 $H_p^{\mathrm{raw}}(b)$ 为原始直方图在 $b$ 处的计数，$\mathrm{cum}(b)=\sum_{b'\le b}H_p^{\mathrm{raw}}(b')$ 为其累积计数，则 $\mathrm{cum}(b)$ 满足精确关系 $\mathrm{cum}(b)=M\big(1-e^{-R_p(b)}\big)$，其解析逆为 Coates 校正~\cite{Coates1968}
 \begin{equation}
   \hat r_p(b)=\ln\frac{M-\mathrm{cum}(b-1)}{M-\mathrm{cum}(b)},
   \label{eq:coates}
 \end{equation}
-其中 $\mathrm{cum}(b)=\sum_{b'\le b}H_p^{\mathrm{raw}}(b')$ 为原始直方图累积计数。校正后的直方图不再服从泊松模型，第~\ref{sec:spad}节的 Fisher 信息不能直接沿用。$\mathrm{cum}(b)$ 服从参数为 $M\big(1-e^{-R_p(b)}\big)$ 的二项分布，对式~\eqref{eq:coates}作一阶误差传播，得逐 bin 方差的闭式
+校正后的直方图不再服从泊松模型，第~\ref{sec:spad}节的 Fisher 信息不能直接沿用。$\mathrm{cum}(b)$ 服从参数为 $M\big(1-e^{-R_p(b)}\big)$ 的二项分布，对式~\eqref{eq:coates}作一阶误差传播，得逐 bin 方差的闭式
 \begin{equation}
   \Var[\hat r_p(b)]=\frac{e^{R_p(b)}-e^{R_p(b-1)}}{M}.
   \label{eq:coates_var}

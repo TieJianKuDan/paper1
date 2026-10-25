@@ -10,7 +10,7 @@
 \end{equation}
 其中 $g_{\Delta}$ 与几何似然比 $\Lambda_{\Delta}$ 同为高斯形状，随 $|\Delta_{pq}|$ 单调递减，尺度参数 $\sigma_w$ 承担 $\sigma_s$ 的角色；$g_{\rho}$ 为线性函数，保留互相关证据似然比``$\rho_{pq}$ 越大支持越强''的单调走向，$\rho_{\mathrm{floor}}\in[0,1)$ 为低分邻居的保底贡献，避免匹配得分偶然偏低时将仍有先验支持的邻居完全排除。归一化系数会吸收常数因子，代理只需复现理想权重的单调行为而无需保留概率语义，参数由此可在验证集上直接标定。第二个因子则是对齐误差的平均统计响应。
 
-对于$1/(v_q + \sigma_\epsilon^{2})$，$v_q$取式~\eqref{eq:v_classical}的形式，并除掉直方图自身携带的 $\hat N_q$ 倍幅度，得到：
+对于 $1/(v_q + \sigma_\epsilon^{2})$，$v_q$取式~\eqref{eq:v_classical}的形式，并除掉直方图自身携带的 $\hat N_q$ 倍幅度，得到：
 \begin{equation}
   \frac{1}{\hat N_q\,\big(v_q+\sigma_\epsilon^2\big)}
   =\frac{1}{\sigma_h^2+\sigma_\epsilon^2\,\hat N_q}

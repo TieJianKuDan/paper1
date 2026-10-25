@@ -4,7 +4,7 @@
 \subsection{含背景光的直方图观测模型}
 \label{sec:spad}
 
-在光子计数系统中，目标回波光子和背景光子可以近似视为独立泊松到达过程。因此，像素 $p$ 在 bin $b$ 上的总计数满足
+在光子计数系统中，目标回波光子和背景光子可以近似视为独立泊松到达过程。由独立泊松过程的叠加性质，像素 $p$ 在 bin $b$ 上的总计数满足
 \begin{equation}
     H_p(b)
     \sim
@@ -18,7 +18,7 @@
     N_p h(b-\mu_p)+\beta_p.
     \label{eq:lambda_background}
 \end{equation}
-其中 $b$ 为直方图的离散 bin 坐标，$N_p$ 为期望信号光子数，$h(\cdot)$ 为归一化系统脉冲响应（impulse response function, IRF），$\mu_p$ 为真实回波中心坐标，$N_p h(b-\mu_p)$ 描述目标回波的期望光子分布；$\beta_p$ 描述每个 bin 的平均背景光子与暗计数。本文假设当前观测窗口内背景近似平坦；若背景随时间变化，只需将 $\beta_p$ 替换为非负函数 $\beta_p(b)$，以下推导仍成立。对每个 bin，由泊松分布的性质直接有
+两式中，$b$ 为直方图的离散 bin 坐标，$N_p$ 为期望信号光子数，$h(\cdot)$ 为归一化系统脉冲响应（impulse response function, IRF），$\mu_p$ 为真实回波中心坐标，$N_p h(b-\mu_p)$ 描述目标回波的期望光子分布；$\beta_p$ 描述每个 bin 的平均背景光子与暗计数。本文假设当前观测窗口内背景近似平坦；若背景随时间变化，只需将 $\beta_p$ 替换为非负函数 $\beta_p(b)$，以下推导仍成立。对每个 bin，由泊松分布的性质直接有
 \begin{equation}
     \E[H_p(b)] = \lambda_p(b;\mu_p),
     \quad

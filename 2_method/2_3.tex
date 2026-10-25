@@ -1,7 +1,7 @@
 \subsection{单目相对深度引导的局部对齐}
 \label{sec:alignment}
 
-理想情况下，融合其他像素的直方图可以等效的看作增大采样周期。设 $p$ 为目标像素，$q$ 为其邻域 $\mathcal{G}_p$ 中的邻居，两者的校正后率域直方图分别为 $F_p$、$F_q$。单目预测可写为 $b_p^M=\mu_p+e_p$、$b_q^M=\mu_q+e_q$，其中 $b_p^M$、$b_q^M$ 为经逐场景最小二乘标定映射到 bin 域的单目深度坐标，$e_p$、$e_q$ 为单目预测误差。定义单目相对位移
+理想情况下，融合其他像素的直方图可以等效地看作增大采样周期数。设 $p$ 为目标像素，$q$ 为其邻域 $\mathcal{G}_p$ 中的邻居，两者的校正后率域直方图分别为 $F_p$、$F_q$。单目预测可写为 $b_p^M=\mu_p+e_p$、$b_q^M=\mu_q+e_q$，其中 $b_p^M$、$b_q^M$ 为经逐场景最小二乘标定映射到 bin 域的单目深度坐标，$e_p$、$e_q$ 为单目预测误差。定义单目相对位移
 \begin{equation}
   \Delta_{pq}\triangleq b_p^M-b_q^M=(\mu_p-\mu_q)+(e_p-e_q).
   \label{eq:delta}

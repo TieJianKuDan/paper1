@@ -1,7 +1,7 @@
 \subsection{可融合性概率模型}
 \label{sec:fusibility}
 
-本节以可融合性概率模型作为逐对直方图对齐误差的代理，首先定义二值潜变量 $z_{pq}\in\{0,1\}$：$z_{pq}=1$ 表示邻居 $q$ 的直方图在对齐后可参与融合，$z_{pq}=0$ 表示不可融合。判断证据为 $(\Delta_{pq},\rho_{pq})$。同一小表面内，单目预测的偏差近似共模，差分可将其消去，$\Delta_{pq}$ 更可信，值得融合。而跨表面时偏差方向很难保证一致，误差差不相消，$\Delta_{pq}$不可信，不值得融合。设可融合状态下 $\Delta_{pq}\mid z_{pq}=1\sim\mathcal{N}(0,\sigma_s^2)$，不可融合状态下 $\Delta_{pq}\mid z_{pq}=0\sim\mathcal{N}(0,\sigma_d^2)$，且 $\sigma_s<\sigma_d$。由此得到几何似然比
+本节以可融合性概率模型作为逐对对齐可靠性的保守代理，首先定义二值潜变量 $z_{pq}\in\{0,1\}$：$z_{pq}=1$ 表示邻居 $q$ 的直方图在对齐后可参与融合，$z_{pq}=0$ 表示不可融合。判断证据为 $(\Delta_{pq},\rho_{pq})$。同一小表面内，单目预测的偏差近似共模，差分可将其消去，$\Delta_{pq}$ 更可信，值得融合。而跨表面时偏差方向很难保证一致，误差差不相消，$\Delta_{pq}$ 不可信，不值得融合。设可融合状态下 $\Delta_{pq}\mid z_{pq}=1\sim\mathcal{N}(0,\sigma_s^2)$，不可融合状态下 $\Delta_{pq}\mid z_{pq}=0\sim\mathcal{N}(0,\sigma_d^2)$，且 $\sigma_s<\sigma_d$。由此得到几何似然比
 \begin{equation}
   \Lambda_{\Delta}(\Delta_{pq})
   =\frac{\sigma_d}{\sigma_s}
@@ -10,7 +10,7 @@
 \end{equation}
 它随 $|\Delta_{pq}|$ 单调递减，构成连续的几何软门控。
 
-互相关得分 $\rho_{pq}$ 的行为直接反映可融合性，即$\rho_{pq}$ 越大，可融合的后验支持越强。由于$\rho_{pq}\in[0,1]$，且在 $\Delta_{pq}$ 确定的搜索中心处取得，故其分布以 $\Delta_{pq}$ 为条件，无需二者条件独立的额外假设：设 $\rho_{pq}\mid\Delta_{pq},z_{pq}=1\sim\BetaDist\big(a_s(\Delta_{pq}),b_s(\Delta_{pq})\big)$，$\rho_{pq}\mid\Delta_{pq},z_{pq}=0\sim\BetaDist\big(a_d(\Delta_{pq}),b_d(\Delta_{pq})\big)$，由此得到互相关证据似然比
+互相关得分 $\rho_{pq}$ 的行为直接反映可融合性，即 $\rho_{pq}$ 越大，可融合的后验支持越强。由于 $\rho_{pq}\in[0,1]$，且在 $\Delta_{pq}$ 确定的搜索中心处取得，故其分布以 $\Delta_{pq}$ 为条件，无需二者条件独立的额外假设：设 $\rho_{pq}\mid\Delta_{pq},z_{pq}=1\sim\BetaDist\big(a_s(\Delta_{pq}),b_s(\Delta_{pq})\big)$，$\rho_{pq}\mid\Delta_{pq},z_{pq}=0\sim\BetaDist\big(a_d(\Delta_{pq}),b_d(\Delta_{pq})\big)$，由此得到互相关证据似然比
 \begin{equation}
 \begin{aligned}
   \Lambda_{\rho}(\rho_{pq}\mid\Delta_{pq})
@@ -21,7 +21,7 @@
 \end{aligned}
 \label{eq:lambda_rho}
 \end{equation}
-当 $a_s>a_d$、$b_s<b_d$，$\Lambda_{\rho}$ 随 $\rho_{pq}$ 单调递增，较大的 $\rho_{pq}$ 获得更强的可融合支持。设先验 $\pi_{pq}=\mathbb{P}(z_{pq}=1)$，由概率链式法则与 Bayes 定理，后验可融合概率为
+当 $a_s>a_d$、$b_s<b_d$ 时，$\Lambda_{\rho}$ 随 $\rho_{pq}$ 单调递增，较大的 $\rho_{pq}$ 获得更强的可融合支持。设先验 $\pi_{pq}=\mathbb{P}(z_{pq}=1)$，由概率链式法则与 Bayes 定理，后验可融合概率为
 \begin{equation}
   \gamma_{pq}\triangleq\mathbb{P}(z_{pq}=1\mid\Delta_{pq},\rho_{pq})
   =\frac{\pi_{pq}\Lambda_{\Delta}\Lambda_{\rho}}
@@ -29,7 +29,7 @@
   \label{eq:gamma}
 \end{equation}
 等价地在 logit 域中 $\logit(\gamma_{pq})=\logit(\pi_{pq})+\log\Lambda_{\Delta}+\log\Lambda_{\rho}$，两类证据以可加方式共同更新后验：几何证据提供软门控，互相关证据验证观测支持。
-将 $\gamma_{pq}$ 与第~\ref{sec:error_model}节的最优位置权重结合。首先用平均强度 $\sigma_\epsilon$ 替换 $\sigma_{\epsilon,pq}^2$。至于逐对的不确定度，$\gamma_{pq}$ 以乘性方式承担：由 $\E[z_{pq}]=\gamma_{pq}$，邻居可融合时贡献精度 $1/(v_q+\sigma_\epsilon^2)$，不可融合时贡献为零，故最终精度权重即为其期望贡献精度
+将 $\gamma_{pq}$ 与第~\ref{sec:error_model}节的最优权重结合。首先用平均强度 $\sigma_\epsilon$ 替换 $\sigma_{\epsilon,pq}^2$。至于逐对的不确定度，$\gamma_{pq}$ 以乘性方式承担：由 $\E[z_{pq}]=\gamma_{pq}$，邻居可融合时贡献精度 $1/(v_q+\sigma_\epsilon^2)$，不可融合时贡献为零，故最终精度权重即为其期望贡献精度
 \begin{equation}
   c_{pq}=\frac{\gamma_{pq}}{v_q + \sigma_\epsilon^{2}}.
   \label{eq:final_weight}

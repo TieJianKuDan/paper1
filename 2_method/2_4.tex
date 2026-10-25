@@ -1,13 +1,13 @@
 \subsection{融合误差与最优融合权重}
 \label{sec:error_model}
 
-本节将每个参与融合的直方图视为独立的观测来源，引入测量与对齐误差，刻画各邻居``应该贡献多少''。由式~\eqref{eq:final_shift}，定义最终对齐误差
+本节将每个邻居视为独立的观测来源，引入测量与对齐误差，刻画各邻居``应该贡献多少''。由式~\eqref{eq:final_shift}，定义最终对齐误差
 \begin{equation}
   \epsilon_{pq}\triangleq\hat k_{pq}-(\mu_p-\mu_q)
   =(e_p-e_q)+r_{pq}+\hat\delta_{pq},
   \label{eq:epsilon}
 \end{equation}
-其中 $r_{pq}=k_{pq}^{M}-\Delta_{pq}\in[-\tfrac12,\tfrac12]$ 为取整残差，对齐误差真实存在且不可忽略。对齐后的邻居回波中心位于 $\mu_q+\hat k_{pq}=\mu_p+\epsilon_{pq}$，其观测为
+其中 $r_{pq}=k_{pq}^{M}-\Delta_{pq}\in[-\tfrac12,\tfrac12]$ 为取整残差。对齐后的邻居回波中心位于 $\mu_q+\hat k_{pq}=\mu_p+\epsilon_{pq}$，其观测为
 \begin{equation}
   y_{pq}=\mu_p+\epsilon_{pq}+n_{pq},
   \label{eq:neighbor_obs}
@@ -23,4 +23,4 @@
   =\frac{1}{v_q+\sigma_{\epsilon,pq}^{2}}.
   \label{eq:c_pq}
 \end{equation}
-然而这一前提无法满足，$\sigma_{\epsilon,pq}^{2}$ 的逐对取值依赖未知的真实位移与匹配细节，无法从单次观测直接计算；即便由配对数据整体估计，得到的也只是平均散布，而非``这一对''邻居的对齐可靠性。
+然而这一前提无法满足，$\sigma_{\epsilon,pq}^{2}$ 的逐对取值依赖未知的真实位移与匹配细节，无法从单次观测直接计算；即便由配对数据整体估计，得到的也只是平均散布，而非``这一对''邻居的对齐可靠性。平均散布至多可充当权重中的基底项，逐对的偏离仍需另行处理。
