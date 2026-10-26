@@ -34,4 +34,33 @@
   =\sum_{q\in\mathcal{G}_p}\alpha_{pq}\,\widetilde F_{pq}(b),
   \label{eq:fuse}
 \end{equation}
-再由融合直方图提取回波中心，得到最终深度估计 $\hat\mu_p$。整个流程仅使用单目先验与当前 SPAD 观测即可运行，同时保留了理想贝叶斯模型的核心结构。
+再由融合直方图提取回波中心，得到最终深度估计 $\hat\mu_p$。整个流程仅使用单目先验与当前 SPAD 观测即可运行，同时保留了理想贝叶斯模型的核心结构。算法~\ref{alg:pipeline}汇总了完整流程。管线分为两级：场景级预计算（第~1--2~行）每场景仅运行一次，产生单目先验 $b^M$；像素级处理（第~3--17~行）完全局限于 $\mathcal{G}_p\cup\{p\}$ 内部，依次完成峰显著度统计、Coates 校正、先验差分对齐与窗搜索、三因子加权，最后归一化融合并提取峰位。除场景级预计算外，各像素之间无数据依赖，整个管线单遍前向、无迭代，计算量随邻域尺寸线性增长，适合并行实现。
+
+\begin{algorithm}[!t]
+\caption{单目引导的直方图融合测距（以像素 $p$ 为例）}
+\label{alg:pipeline}
+\begin{algorithmic}[1]
+\small
+\Require 场景内各像素的原始直方图 $\{H_q^{\mathrm{raw}}\}$
+\Ensure 像素 $p$ 的深度估计 $\hat\mu_p$
+\State $d^{\mathrm{rel}}\leftarrow\mathrm{DAV2}\Big(\mathrm{norm}\big(\ln(1+\sum_b H^{\mathrm{raw}})\big)\Big)$ \Comment{单目相对深度}
+\State $b^M\leftarrow\mathrm{Med}_{3\times3}\big(\mathrm{LSQ}(d^{\mathrm{rel}})\big)$ \Comment{最小二乘标定至 bin 域}
+\For{$q\in\mathcal{G}_p\cup\{p\}$}
+  \State $\hat N_q\leftarrow\sum_{b\in\Omega_q}\big(H_q^{\mathrm{raw}}(b)-\hat\beta_q\big)$ \Comment{原始域峰显著度}
+  \State $F_q\leftarrow\mathrm{Coates}(H_q^{\mathrm{raw}};M)$ \Comment{式~\eqref{eq:coates}}
+\EndFor
+\For{$q\in\mathcal{G}_p\cup\{p\}$} \Comment{$q=p$ 时 $\Delta_{pq}=0$、$\rho_{pq}=1$}
+  \State $\Delta_{pq}\leftarrow b_p^M-b_q^M$，\quad $k_{pq}^M\leftarrow\mathrm{round}(\Delta_{pq})$
+  \For{$\delta\in\{-K,\dots,K\}$}
+    \State $\rho_{pq}(\delta)\leftarrow\big\langle F_p,T_{k_{pq}^M+\delta}F_q\big\rangle\big/(\|F_p\|\,\|F_q\|)$ \Comment{式~\eqref{eq:nmf}}
+  \EndFor
+  \State $\hat\delta_{pq}\leftarrow\argmax_\delta\rho_{pq}(\delta)$, \quad $\hat k_{pq}\leftarrow k_{pq}^M+\hat\delta_{pq}$
+  \State $\widetilde F_{pq}\leftarrow T_{\hat k_{pq}}F_q$, \quad $\rho_{pq}\leftarrow\rho_{pq}(\hat\delta_{pq})$
+  \State $w_{pq}\leftarrow g_\Delta(\Delta_{pq})\,g_\rho(\rho_{pq})\big/(\hat N_q+\hat N_0)$ \Comment{式~\eqref{eq:weight}}
+\EndFor
+\State $\alpha_{pq}\leftarrow w_{pq}\big/\sum_{r\in\mathcal{G}_p\cup\{p\}}w_{pr}$ \Comment{式 \eqref{eq:weight}}
+\State $F_p^{\mathrm{fuse}}\leftarrow\sum_q\alpha_{pq}\,\widetilde F_{pq}$ \Comment{式\eqref{eq:fuse}}
+\State $\hat\mu_p\leftarrow\operatorname{Peak}\big(\mathrm{MF}_{\sigma_h}(F_p^{\mathrm{fuse}})\big)$ \Comment{匹配滤波后取亚 bin 峰位}
+\State \Return $\hat\mu_p$
+\end{algorithmic}
+\end{algorithm}
