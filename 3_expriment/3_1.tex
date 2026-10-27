@@ -1,0 +1,85 @@
+\subsection{实验配置}
+\label{sec:setup}
+
+\subsubsection{仿真数据产生}
+仿真采用 Scholes 等人~\cite{Scholes2023}提出的单光子深度成像数值仿真方法：在给定光学系统与采集时间的条件下，对脉冲激光传输衰减、场景反射、背景光注入与 SPAD 探测器的逐光子响应进行建模，直接输出含死时间畸变的原始光子计数直方图。本文完整沿用其系统配置，全部参数列于表~\ref{tab:simcfg}。SPAD 阵列密度取两档，即高分辨率 $230\times310$ 与低分辨率 $46\times62$，两档网格下光学与探测器参数完全相同。背景光照度取三档：$5\times10^{3}$、$1\times10^{4}$、$5\times10^{4}\,\mathrm{lux}$。为量化工作点难度，定义逐像素检测信噪比
+\begin{equation}
+  \mathrm{SNR}_p=\frac{N^{\mathrm{sig}}_p}{\sqrt{N^{\mathrm{sig}}_p+N^{\mathrm{bkg}}_p}},
+  \qquad
+  \mathrm{SNR}_p^{\,\mathrm{dB}}=20\log_{10}\mathrm{SNR}_p,
+  \label{eq:snr}
+\end{equation}
+其中 $N^{\mathrm{sig}}_p$、$N^{\mathrm{bkg}}_p$ 分别为像素 $p$ 单帧内期望记录的信号事件数与噪声事件数，由仿真器在死时间竞争下解析分解得到。背景主导（$N^{\mathrm{bkg}}_p\gg N^{\mathrm{sig}}_p$）时，$\mathrm{SNR}$ 随背景照度按 $1/\sqrt{N^{\mathrm{bkg}}_p}$ 下降。
+
+\begin{table}[!t]
+\centering
+\caption{LiDAR 仿真器系统配置}
+\label{tab:simcfg}\small\setlength{\tabcolsep}{15pt}
+\begin{tabular}{@{}cll@{}}
+\toprule
+模块 & 参数 & 数值 \\
+\midrule
+\multirow{6}{*}{发射端} & 激光中心波长 & $671\,\mathrm{nm}$ \\
+ & 激光脉冲半高全宽 & $0.6\,\mathrm{ns}$ \\
+ & 单脉冲激光能量 & $1.219\times10^{-10}\,\mathrm{J}$ \\
+ & 激光脉冲重复频率 & $2.25\,\mathrm{MHz}$ \\
+ & 照明光纤芯径 & $550\,\mu\mathrm{m}$ \\
+ & 照明透镜焦距 & $8\,\mathrm{mm}$ \\
+\midrule
+\multirow{10}{*}{接收端} & 接收镜头光圈数 & $2.0$ \\
+ & 光子探测效率 & $18\%$ \\
+ & 有效像元尺寸 & $9.2\times9.2\,\mu\mathrm{m}^2$ \\
+ & 暗计数率 & $126\,\mathrm{s^{-1}}$ \\
+ & 激光脉冲时间抖动 & $220\,\mathrm{ps}$ \\
+ & 仿真精细时间步长 & $50\,\mathrm{ps}$ \\
+ & 直方图 bin 数 & $1024$ \\
+ & 测距量程 & $[0,\,10.24]\,\mathrm{m}$ \\
+ & 帧率 & $2000\,\mathrm{fps}$ \\
+ & 每帧累积测距周期数 & $1125$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+仿真场景取 NYU Depth V2 Labeled Dataset~\cite{Silberman2012}全部 $464$ 个室内场景的第一帧。每帧 $640\times480$ 图像先裁剪四周 $10$ 像素边缘，再经面积插值降采样至目标分辨率；深度真值同步降采样至对应分辨率，作为评价参考。表~\ref{tab:snr}汇总了全部 464 个场景在两种分辨率、三档照度下逐像素 SNR 统计。三个工作点覆盖了从勉强可用到深度饥饿的运行区间：5k lux 档尚有约四分之一像素 SNR 高于 $0\,\mathrm{dB}$；50k lux 档中位数低至 $-15.6\,\mathrm{dB}$，即便最好的 5\% 像素也仅勉强越过 $0\,\mathrm{dB}$。$\mathrm{SNR}<0\,\mathrm{dB}$ 即期望信号计数低于单帧总计数的标准差，信号峰淹没于统计噪声之中，此类像素在 50k lux 档占比超过 $94\%$。两种分辨率的统计高度接近，均值差约 $0.2\,\mathrm{dB}$。
+
+\begin{table}[!t]
+\centering
+\caption{全部 464 个场景的逐像素检测 SNR 统计（单位 dB）}
+\label{tab:snr}\small\setlength{\tabcolsep}{2pt}
+\begin{tabular}{ccccccc}
+\toprule
+分辨率 & 照度 & mean$\pm$std & 中位数 & P5 & P95 & $<0$\,dB 占比 \\
+\midrule
+\multirow{3}{*}{$230\times310$} & 5k & $-5.9\pm8.7$ & $-6.0$ & $-20.3$ & $8.4$ & 75.4\% \\
+ & 10k & $-8.6\pm8.9$ & $-8.7$ & $-23.2$ & $6.3$ & 83.3\% \\
+ & 50k & $-15.4\pm9.4$ & $-15.6$ & $-30.6$ & $0.5$ & 94.5\% \\
+\midrule
+\multirow{3}{*}{$46\times62$} & 5k & $-5.7\pm8.4$ & $-5.9$ & $-19.6$ & $8.4$ & 75.3\% \\
+ & 10k & $-8.4\pm8.6$ & $-8.6$ & $-22.5$ & $6.3$ & 83.3\% \\
+ & 50k & $-15.2\pm9.0$ & $-15.5$ & $-29.9$ & $0.5$ & 94.5\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{实现细节与评价指标}
+本文方法的全部自由参数汇总于表~\ref{tab:impl}，符号与第~\ref{sec:method}节一致。按第~\ref{sec:engineering}节的标定流程，上述参数以 MAE 为目标在验证集上逐维搜索确定：验证集由随机抽取的 64 个场景构成，标定在低分辨率数据上进行；所得参数在其余场景、原生分辨率与全部照度工作点中沿用同一组取值并全程冻结。标定过程中未观察到对参数取值的显著敏感。单目相对深度由 Depth-Anything-V2-Small~\cite{Yang2024}给出。评价指标包括平均绝对误差（MAE）、中位数误差与 inlier 比例，其中 inlier 比例为相对误差 $\lvert\hat d_p-d_p\rvert/d_p$ 小于 $0.2\%$、$0.5\%$、$1\%$ 的像素占比，$\hat d_p$、$d_p$ 分别为估计深度与真值深度。
+
+\begin{table}[!t]
+\centering
+\caption{本文方法的自由参数取值}
+\label{tab:impl}\small\setlength{\tabcolsep}{1pt}
+\begin{tabular}{@{}cll@{}}
+\toprule
+符号 & 含义 & 取值 \\
+\midrule
+$R$ & 邻域 $\mathcal{G}_p$ 半径（共 $(2R{+}1)^2$ 个邻居） & $6$ \\
+$\sigma_{\mathrm{mf}}$ & 取峰匹配滤波核标准差（$\ge\sigma_h$） & $6.73$ bins \\
+$K$ & 窗搜索半宽（$2K{+}1$ 个候选偏移） & $5$ \\
+$\sigma_w$ & 几何软门控尺度 & $16$ bins \\
+$\rho_{\mathrm{floor}}$ & 匹配得分保底贡献 & $0.3$ \\
+$\hat N_0$ & 对齐残差强度标定量纲（$\sigma_h^2/\sigma_\epsilon^2$） & $50$ \\
+$\Omega_q$ & 峰值信号窗口半宽 & $27$ bins \\
+$\hat\beta_q$ & 背景估计 & 直方图 $20\%$ 分位数 \\
+\bottomrule
+\end{tabular}
+\end{table}

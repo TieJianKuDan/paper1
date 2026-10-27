@@ -135,6 +135,7 @@ $\sigma_\epsilon$ & 对齐残差的平均强度 & 单一标定常数；2\_6 中 
 \midrule
 $g_{\Delta},g_{\rho}$ & 可靠性因子（几何门/匹配门） & $\gamma_{pq}$ 的行为代理：$g_\Delta$ 与 $\Lambda_\Delta$ 同形状，$g_\rho$ 保留 $\Lambda_\rho$ 单调走向的线性形式 \\
 $\sigma_w$ & 几何软门控尺度 & 承担 $\sigma_s$ 的角色 \\
+$\sigma_{\mathrm{mf}}$ & 取峰匹配滤波核标准差 & 标定参数 $\ge\sigma_h$；融合鼓包宽度 $=\sqrt{\sigma_h^2+\sigma_\epsilon^2}$ 加表面内深度起伏，匹配对象是融合鼓包而非 IRF \\
 $\rho_{\mathrm{floor}}$ & 匹配得分保底贡献 & $\in[0,1)$ \\
 $\hat N_q$ & 直方图峰显著度 & 峰值信号窗口 $\Omega_q$ 内扣背景计数之和；信号强度的估计 \\
 $\hat N_0$ & 对齐残差强度的标定量纲 & $\sigma_h^2/\sigma_\epsilon^2$：计数方差与对齐方差相等的光子数；$\hat N_q\to0$ 时防权重发散 \\
@@ -142,6 +143,20 @@ $\Omega_q$ & 峰值信号窗口 & 以峰为中心、半径 $\lceil4\sigma_h\rcei
 $\hat\beta_q$ & 背景估计 & 直方图 $20\%$ 分位 \\
 $w_{pq}$ & 工程融合权重 & $g_\Delta g_\rho/(\hat N_q+\hat N_0)$ \\
 $F_p^{\mathrm{fuse}}(b)$ & 融合直方图 & $\sum_{q\in\mathcal{G}_p}\alpha_{pq}\widetilde F_{pq}(b)$，取峰得 $\hat\mu_p$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section*{III 实验配置（\texttt{3\_expriment/3\_1.tex}）}
+\begin{center}
+\begin{tabular}{@{}llp{0.5\textwidth}@{}}
+\toprule
+符号 & 含义 & 备注 \\
+\midrule
+$N^{\mathrm{sig}}_p$ & 像素 $p$ 单帧期望记录的信号事件数 & 死时间竞争后；原记 $\mu_s$（与回波中心 $\mu_p$ 冲突，已改名） \\
+$N^{\mathrm{bkg}}_p$ & 像素 $p$ 单帧期望记录的噪声事件数 & 原记 $\mu_b$（下标 $b$ 与 bin 坐标冲突） \\
+$\mathrm{SNR}_p$ & 逐像素检测信噪比 & $N^{\mathrm{sig}}_p/\sqrt{N^{\mathrm{sig}}_p+N^{\mathrm{bkg}}_p}$，dB 表述取 $20\log_{10}$ \\
+$d_p,\ \hat d_p$ & 真值/估计深度（米） & 相对误差分母分子；$\mu$ 不再用于深度 \\
 \bottomrule
 \end{tabular}
 \end{center}

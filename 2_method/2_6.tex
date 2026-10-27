@@ -34,7 +34,7 @@
   =\sum_{q\in\mathcal{G}_p}\alpha_{pq}\,\widetilde F_{pq}(b),
   \label{eq:fuse}
 \end{equation}
-再由融合直方图提取回波中心，得到最终深度估计 $\hat\mu_p$。整个流程仅使用单目先验与当前 SPAD 观测即可运行，同时保留了理想贝叶斯模型的核心结构。算法~\ref{alg:pipeline}汇总了完整流程。管线分为两级：场景级预计算（第~1--2~行）每场景仅运行一次，产生单目先验 $b^M$；像素级处理（第~3--17~行）完全局限于 $\mathcal{G}_p\cup\{p\}$ 内部，依次完成峰显著度统计、Coates 校正、先验差分对齐与窗搜索、三因子加权，最后归一化融合并提取峰位。除场景级预计算外，各像素之间无数据依赖，整个管线单遍前向、无迭代，计算量随邻域尺寸线性增长，适合并行实现。
+最后对融合直方图作匹配滤波并取峰，得到最终深度估计 $\hat\mu_p$。由于对齐残差与同表面内的真实深度起伏使融合鼓包宽于单像素 IRF，取峰滤波宽度取为标定参数 $\sigma_{\mathrm{mf}}\ge\sigma_h$。整个流程仅使用单目先验与当前 SPAD 观测即可运行，同时保留了理想贝叶斯模型的核心结构。算法~\ref{alg:pipeline}汇总了完整流程。管线分为两级：场景级预计算（第~1--2~行）每场景仅运行一次，产生单目先验 $b^M$；像素级处理（第~3--17~行）完全局限于 $\mathcal{G}_p\cup\{p\}$ 内部，依次完成峰显著度统计、Coates 校正、先验差分对齐与窗搜索、三因子加权，最后归一化融合并提取峰位。除场景级预计算外，各像素之间无数据依赖，整个管线单遍前向、无迭代，计算量随邻域尺寸线性增长，适合并行实现。
 
 \begin{algorithm}[!t]
 \caption{单目引导的直方图融合测距（以像素 $p$ 为例）}
@@ -60,7 +60,7 @@
 \EndFor
 \State $\alpha_{pq}\leftarrow w_{pq}\big/\sum_{r\in\mathcal{G}_p\cup\{p\}}w_{pr}$ \Comment{式 \eqref{eq:weight}}
 \State $F_p^{\mathrm{fuse}}\leftarrow\sum_q\alpha_{pq}\,\widetilde F_{pq}$ \Comment{式\eqref{eq:fuse}}
-\State $\hat\mu_p\leftarrow\operatorname{Peak}\big(\mathrm{MF}_{\sigma_h}(F_p^{\mathrm{fuse}})\big)$ \Comment{匹配滤波后取亚 bin 峰位}
+\State $\hat\mu_p\leftarrow\operatorname{Peak}\big(\mathrm{MF}_{\sigma_{\mathrm{mf}}}(F_p^{\mathrm{fuse}})\big)$ \Comment{匹配滤波后取亚 bin 峰位}
 \State \Return $\hat\mu_p$
 \end{algorithmic}
 \end{algorithm}
